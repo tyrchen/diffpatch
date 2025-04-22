@@ -1,10 +1,14 @@
 use crate::differ::{Change, DiffAlgorithm};
 use crate::Differ;
-use std::cmp::min;
 
 use super::{create_patch, handle_empty_files, process_changes_to_chunks};
 
 /// The Myers differ implementation that uses Myers algorithm for diffing
+///
+/// This implementation uses the Longest Common Subsequence (LCS) approach, which is
+/// a dynamic programming solution that provides the foundation of Myers' algorithm.
+/// While the full Myers O(ND) optimization uses a greedy approach with diagonal paths,
+/// this implementation prioritizes correctness and readability.
 pub struct MyersDiffer<'a> {
     differ: &'a Differ,
 }
@@ -15,82 +19,164 @@ impl<'a> MyersDiffer<'a> {
         Self { differ }
     }
 
+    /// Implements a diffing algorithm based on Myers' principles
+    /// Finds the shortest edit script (SES) between old_lines and new_lines
+    ///
+    /// Core principles from Myers' algorithm included:
+    /// 1. Finding the optimal (shortest) edit path
+    /// 2. Using a graph-based approach (via the LCS matrix)
+    /// 3. Considering the problem as finding a path through an edit graph
+    /// 4. Producing a minimal set of inserts and deletes to transform the source to target
     fn myers_diff(&self, old_lines: &[&str], new_lines: &[&str]) -> Vec<Change> {
-        let mut changes = Vec::new();
-        let mut i = 0;
-        let mut j = 0;
+        // Special cases
+        if old_lines.is_empty() && new_lines.is_empty() {
+            return Vec::new();
+        }
 
-        // For each line, decide whether it's equal, insert, or delete
-        while i < old_lines.len() || j < new_lines.len() {
-            if i < old_lines.len() && j < new_lines.len() && old_lines[i] == new_lines[j] {
-                // Equal lines
-                changes.push(Change::Equal(i, j));
-                i += 1;
-                j += 1;
-            } else {
-                // Find the next matching lines using a simple approach
-                // This is a simpler approach than the full Myers diff
-                // But helps produce patches more compatible with the naive approach
-                let mut found_match = false;
+        if old_lines.is_empty() {
+            return vec![Change::Insert(0, new_lines.len())];
+        }
 
-                // First look for line in new that matches current old
-                if i < old_lines.len() {
-                    let old_line = old_lines[i];
-                    for look_ahead in 0..min(5, new_lines.len() - j) {
-                        if new_lines[j + look_ahead] == old_line {
-                            // We found the line - mark everything before as inserted
-                            if look_ahead > 0 {
-                                changes.push(Change::Insert(j, look_ahead));
-                                j += look_ahead;
-                            }
-                            changes.push(Change::Equal(i, j));
-                            i += 1;
-                            j += 1;
-                            found_match = true;
-                            break;
-                        }
-                    }
-                }
+        if new_lines.is_empty() {
+            return vec![Change::Delete(0, old_lines.len())];
+        }
 
-                // If we didn't find a match, look for line in old that matches current new
-                if !found_match && j < new_lines.len() {
-                    let new_line = new_lines[j];
-                    for look_ahead in 0..min(5, old_lines.len() - i) {
-                        if old_lines[i + look_ahead] == new_line {
-                            // We found the line - mark everything before as deleted
-                            if look_ahead > 0 {
-                                changes.push(Change::Delete(i, look_ahead));
-                                i += look_ahead;
-                            }
-                            changes.push(Change::Equal(i, j));
-                            i += 1;
-                            j += 1;
-                            found_match = true;
-                            break;
-                        }
-                    }
-                }
+        // If files are identical, return no changes
+        if old_lines == new_lines {
+            return Vec::new();
+        }
 
-                // If still no match, delete/insert current line and continue
-                if !found_match {
-                    if i < old_lines.len() {
-                        changes.push(Change::Delete(i, 1));
-                        i += 1;
-                    }
-                    if j < new_lines.len() {
-                        changes.push(Change::Insert(j, 1));
-                        j += 1;
-                    }
+        // LCS approach is equivalent to finding the shortest edit path in Myers' algorithm
+        // Myers optimizes this by directly working with diagonals in the edit graph
+        // rather than computing the full LCS matrix, but the end result is equivalent
+
+        let n = old_lines.len();
+        let m = new_lines.len();
+
+        // Build the LCS matrix - this represents our edit graph implicitly
+        // In Myers' algorithm, this would be optimized to only store the furthest
+        // reaching D-paths for each diagonal k
+        let mut lcs = vec![vec![0; m + 1]; n + 1];
+
+        for i in 1..=n {
+            for j in 1..=m {
+                if old_lines[i - 1] == new_lines[j - 1] {
+                    lcs[i][j] = lcs[i - 1][j - 1] + 1; // Diagonal move (match)
+                } else {
+                    // Choose best of vertical (insertion) or horizontal (deletion) move
+                    lcs[i][j] = std::cmp::max(lcs[i - 1][j], lcs[i][j - 1]);
                 }
             }
         }
 
-        changes
+        // Backtrack to find the changes - equivalent to reconstructing the path
+        // in Myers' algorithm from the furthest reaching endpoints
+        let mut changes = Vec::new();
+        let mut i = n;
+        let mut j = m;
+
+        while i > 0 || j > 0 {
+            if i > 0 && j > 0 && old_lines[i - 1] == new_lines[j - 1] {
+                // Diagonal move - matching elements (snake in Myers' terminology)
+                changes.push(Change::Equal(i - 1, j - 1));
+                i -= 1;
+                j -= 1;
+            } else if j > 0 && (i == 0 || lcs[i][j - 1] >= lcs[i - 1][j]) {
+                // Vertical move - insertion
+                changes.push(Change::Insert(j - 1, 1));
+                j -= 1;
+            } else if i > 0 {
+                // Horizontal move - deletion
+                changes.push(Change::Delete(i - 1, 1));
+                i -= 1;
+            }
+        }
+
+        // Reverse changes (we constructed them from end to start)
+        changes.reverse();
+
+        // Post-process to merge adjacent operations of the same type
+        // This is an optimization for better patch representation
+        let mut result = Vec::new();
+        let mut i = 0;
+
+        while i < changes.len() {
+            match changes[i] {
+                Change::Delete(idx, count) => {
+                    let mut total = count;
+                    let mut j = i + 1;
+
+                    while j < changes.len() {
+                        if let Change::Delete(next_idx, next_count) = changes[j] {
+                            if next_idx == idx + total {
+                                total += next_count;
+                                j += 1;
+                            } else {
+                                break;
+                            }
+                        } else {
+                            break;
+                        }
+                    }
+
+                    result.push(Change::Delete(idx, total));
+                    i = j;
+                }
+                Change::Insert(idx, count) => {
+                    let mut total = count;
+                    let mut j = i + 1;
+
+                    while j < changes.len() {
+                        if let Change::Insert(next_idx, next_count) = changes[j] {
+                            if next_idx == idx + total {
+                                total += next_count;
+                                j += 1;
+                            } else {
+                                break;
+                            }
+                        } else {
+                            break;
+                        }
+                    }
+
+                    result.push(Change::Insert(idx, total));
+                    i = j;
+                }
+                Change::Equal(old_idx, new_idx) => {
+                    let mut count = 1;
+                    let mut j = i + 1;
+
+                    while j < changes.len() {
+                        if let Change::Equal(next_old, next_new) = changes[j] {
+                            if next_old == old_idx + count && next_new == new_idx + count {
+                                count += 1;
+                                j += 1;
+                            } else {
+                                break;
+                            }
+                        } else {
+                            break;
+                        }
+                    }
+
+                    for k in 0..count {
+                        result.push(Change::Equal(old_idx + k, new_idx + k));
+                    }
+
+                    i = j;
+                }
+            }
+        }
+
+        result
     }
 }
 
 impl DiffAlgorithm for MyersDiffer<'_> {
     /// Generate a patch between the old and new content using the Myers diffing algorithm
+    ///
+    /// The algorithm finds the shortest edit script (minimum number of insertions and deletions)
+    /// to transform the old content into the new content.
     fn generate(&self) -> crate::Patch {
         let old_lines: Vec<&str> = self.differ.old.lines().collect();
         let new_lines: Vec<&str> = self.differ.new.lines().collect();
@@ -100,7 +186,7 @@ impl DiffAlgorithm for MyersDiffer<'_> {
             return patch;
         }
 
-        // Find the line-level changes using our simplified algorithm
+        // Find the line-level changes using our implementation of Myers algorithm
         let changes = self.myers_diff(&old_lines, &new_lines);
 
         // Process the changes into chunks with context
@@ -188,6 +274,19 @@ mod tests {
     fn test_myers_multiple_changes() {
         let old = "line1\nline2\nline3\nline4\nline5";
         let new = "line1\nmodified line\nline3\nline4\nnew line";
+
+        let differ = Differ::new(old, new, DiffAlgorithmType::Myers);
+        let myers = MyersDiffer::new(&differ);
+        let patch = myers.generate();
+
+        let result = Patcher::new(patch).apply(old, false).unwrap();
+        assert_eq!(result, new);
+    }
+
+    #[test]
+    fn test_myers_complex_diff() {
+        let old = "A\nB\nC\nA\nB\nB\nA";
+        let new = "C\nB\nA\nB\nA\nC";
 
         let differ = Differ::new(old, new, DiffAlgorithmType::Myers);
         let myers = MyersDiffer::new(&differ);
