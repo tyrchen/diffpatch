@@ -17,8 +17,14 @@ pub trait DiffAlgorithm {
     fn generate(&self) -> Patch;
 }
 
+pub enum DiffAlgorithmType {
+    Myers,
+    Naive,
+}
+
 /// The base Differ struct that implements diffing algorithms
 pub struct Differ {
+    pub(crate) algorithm: DiffAlgorithmType,
     pub(crate) old: String,
     pub(crate) new: String,
     pub(crate) context_lines: usize,
@@ -26,8 +32,9 @@ pub struct Differ {
 
 impl Differ {
     /// Create a new Differ with the old and new content
-    pub fn new(old: &str, new: &str) -> Self {
+    pub fn new(old: &str, new: &str, algorithm: DiffAlgorithmType) -> Self {
         Self {
+            algorithm,
             old: old.to_string(),
             new: new.to_string(),
             context_lines: 3, // Default context lines
@@ -42,8 +49,16 @@ impl Differ {
 
     /// Generate a patch using the Myers diffing algorithm (default)
     pub fn generate(&self) -> Patch {
-        let differ = MyersDiffer::new(self);
-        differ.generate()
+        match self.algorithm {
+            DiffAlgorithmType::Myers => {
+                let differ = MyersDiffer::new(self);
+                differ.generate()
+            }
+            DiffAlgorithmType::Naive => {
+                let differ = NaiveDiffer::new(self);
+                differ.generate()
+            }
+        }
     }
 }
 
@@ -317,7 +332,7 @@ mod tests {
         let new = "line1\nline2 modified\nline3\nline4";
 
         // Create a differ
-        let differ = Differ::new(old, new);
+        let differ = Differ::new(old, new, DiffAlgorithmType::Myers);
 
         // Test naive algorithm
         let naive = NaiveDiffer::new(&differ);
@@ -338,7 +353,7 @@ mod tests {
         let new = "This is a changed test file\nwith multiple modified lines\nthat will be completely changed\nand some lines removed\nto test the diff algorithms\nnew line at end\nend of file";
 
         // Create a differ with more context lines
-        let differ = Differ::new(old, new).context_lines(2);
+        let differ = Differ::new(old, new, DiffAlgorithmType::Myers).context_lines(2);
 
         // Test both algorithms and make sure they both produce valid patches
         let naive = NaiveDiffer::new(&differ);

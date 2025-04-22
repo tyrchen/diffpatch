@@ -113,6 +113,7 @@ pub struct Chunk {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::differ::DiffAlgorithmType;
 
     #[test]
     fn test_integration() {
@@ -120,7 +121,7 @@ mod tests {
         let new = "line1\nline2 modified\nline3\nline4";
 
         // Generate a patch
-        let differ = Differ::new(old, new);
+        let differ = Differ::new(old, new, DiffAlgorithmType::Myers);
         let patch = differ.generate();
 
         // Apply the patch
