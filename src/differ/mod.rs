@@ -1,6 +1,7 @@
 mod common;
 mod myers;
 mod naive;
+mod xdiff;
 
 use crate::Diff;
 use crate::Patch;
@@ -8,6 +9,7 @@ use std::ops::Index;
 
 pub use myers::MyersDiffer;
 pub use naive::NaiveDiffer;
+pub use xdiff::XDiffDiffer;
 
 pub use common::*;
 
@@ -20,6 +22,7 @@ pub trait DiffAlgorithm {
 pub enum DiffAlgorithmType {
     Myers,
     Naive,
+    XDiff,
 }
 
 /// The base Differ struct that implements diffing algorithms
@@ -47,7 +50,7 @@ impl Differ {
         self
     }
 
-    /// Generate a patch using the Myers diffing algorithm (default)
+    /// Generate a patch using the configured diffing algorithm
     pub fn generate(&self) -> Patch {
         match self.algorithm {
             DiffAlgorithmType::Myers => {
@@ -56,6 +59,10 @@ impl Differ {
             }
             DiffAlgorithmType::Naive => {
                 let differ = NaiveDiffer::new(self);
+                differ.generate()
+            }
+            DiffAlgorithmType::XDiff => {
+                let differ = XDiffDiffer::new(self);
                 differ.generate()
             }
         }
@@ -345,6 +352,12 @@ mod tests {
         let myers_patch = myers.generate();
         let myers_result = Patcher::new(myers_patch).apply(old, false).unwrap();
         assert_eq!(myers_result, new);
+
+        // Test XDiff algorithm
+        let xdiff = XDiffDiffer::new(&differ);
+        let xdiff_patch = xdiff.generate();
+        let xdiff_result = Patcher::new(xdiff_patch).apply(old, false).unwrap();
+        assert_eq!(xdiff_result, new);
     }
 
     #[test]
@@ -355,7 +368,7 @@ mod tests {
         // Create a differ with more context lines
         let differ = Differ::new(old, new, DiffAlgorithmType::Myers).context_lines(2);
 
-        // Test both algorithms and make sure they both produce valid patches
+        // Test all algorithms and make sure they all produce valid patches
         let naive = NaiveDiffer::new(&differ);
         let naive_patch = naive.generate();
         let naive_result = Patcher::new(naive_patch).apply(old, false).unwrap();
@@ -365,5 +378,10 @@ mod tests {
         let myers_patch = myers.generate();
         let myers_result = Patcher::new(myers_patch).apply(old, false).unwrap();
         assert_eq!(myers_result, new);
+
+        let xdiff = XDiffDiffer::new(&differ);
+        let xdiff_patch = xdiff.generate();
+        let xdiff_result = Patcher::new(xdiff_patch).apply(old, false).unwrap();
+        assert_eq!(xdiff_result, new);
     }
 }
