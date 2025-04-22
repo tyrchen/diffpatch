@@ -1,12 +1,15 @@
+mod common;
+mod myers;
+mod naive;
+
 use crate::Diff;
 use crate::Patch;
 use std::ops::Index;
 
-mod myers;
-mod naive;
-
 pub use myers::MyersDiffer;
 pub use naive::NaiveDiffer;
+
+pub(crate) use common::*;
 
 /// Trait for different diffing algorithms
 pub trait DiffAlgorithm {
@@ -37,10 +40,10 @@ impl Differ {
         self
     }
 
-    /// Generate a patch using the naive diffing algorithm (default)
+    /// Generate a patch using the Myers diffing algorithm (default)
     pub fn generate(&self) -> Patch {
-        let naive = NaiveDiffer::new(self);
-        naive.generate()
+        let differ = MyersDiffer::new(self);
+        differ.generate()
     }
 }
 
