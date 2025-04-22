@@ -2,6 +2,8 @@ use std::fs::{self, File};
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 
+use tracing::warn;
+
 use crate::{Error, Patch, Patcher};
 
 /// Represents a file that has been patched.
@@ -78,7 +80,7 @@ impl MultifilePatch {
                             Ok(patch) => patches.push(patch),
                             Err(e) => {
                                 // Provide more context in the warning
-                                eprintln!(
+                                warn!(
                                     "Warning: Skipping malformed patch section (lines {}-{}): {}\n--- Patch Content Start ---\n{}\n--- Patch Content End ---",
                                     start + 1, i, e, patch_content
                                 );
@@ -99,7 +101,7 @@ impl MultifilePatch {
                 match Patch::parse(&patch_content) {
                     Ok(patch) => patches.push(patch),
                     Err(e) => {
-                        eprintln!(
+                        warn!(
                             "Warning: Skipping malformed patch section at end of file (lines {}-{}): {}\n--- Patch Content Start ---\n{}\n--- Patch Content End ---",
                             start + 1, lines.len(), e, patch_content
                         );

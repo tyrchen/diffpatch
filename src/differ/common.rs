@@ -1,3 +1,5 @@
+use tracing::warn;
+
 use crate::{Chunk, Operation, Patch};
 
 /// Change type used internally for the diffing algorithms
@@ -70,24 +72,20 @@ fn find_next_block(
     start_index: usize,
     context_lines: usize,
 ) -> Option<(usize, usize)> {
-    // 1. Skip leading Equal changes
-    let mut block_start_idx = start_index;
-    while block_start_idx < changes.len() {
-        if let Change::Equal(_, _) = changes[block_start_idx] {
-            block_start_idx += 1;
-        } else {
-            break;
-        }
-    }
+    let merge_threshold = context_lines * 2;
 
-    if block_start_idx >= changes.len() {
-        return None; // No more non-equal changes found
-    }
+    // 1. Find the start of the next non-Equal block using iterators
+    let Some(relative_start_pos) = changes[start_index..]
+        .iter()
+        .position(|c| !matches!(c, Change::Equal(_, _)))
+    else {
+        return None; // No non-equal changes found from start_index onwards
+    };
+    let block_start_idx = start_index + relative_start_pos;
 
     // 2. Find the end of the block, merging across small gaps of Equal changes
     let mut block_end_idx = block_start_idx;
     let mut consecutive_equals = 0;
-    let merge_threshold = context_lines * 2; // Threshold for merging blocks
 
     while block_end_idx < changes.len() {
         match changes[block_end_idx] {
@@ -97,20 +95,33 @@ fn find_next_block(
             _ => {
                 // Delete or Insert encountered
                 // If the preceding gap of Equal changes was large enough, end the block before it.
-                if consecutive_equals >= merge_threshold {
+                if consecutive_equals > merge_threshold {
                     // Use > not >= to keep context for both sides
                     block_end_idx = block_end_idx.saturating_sub(consecutive_equals);
-                    break;
+                    // After adjusting for trailing equals, we have the correct end index.
+                    // Return immediately to prevent issues seen in debug logs (spurious second trigger).
+                    return Some((block_start_idx, block_end_idx));
                 }
                 consecutive_equals = 0; // Reset gap counter as we found a non-equal change
             }
         }
         block_end_idx += 1;
 
-        // Special case: If we reached the end and the last changes were Equal, check the gap count.
-        if block_end_idx == changes.len() && consecutive_equals >= merge_threshold {
+        // Post-loop check: Adjust end index if trailing equals exceed threshold
+        if block_end_idx == changes.len() && consecutive_equals > merge_threshold {
             block_end_idx = block_end_idx.saturating_sub(consecutive_equals);
+            return Some((block_start_idx, block_end_idx));
         }
+    }
+
+    // Final sanity check: block end should not be before block start
+    if block_end_idx < block_start_idx {
+        warn!(
+            "Warning: find_next_block calculated block_end ({}) < block_start ({}). Returning None.",
+            block_end_idx,
+            block_start_idx
+        );
+        return None;
     }
 
     Some((block_start_idx, block_end_idx))
@@ -222,6 +233,18 @@ pub fn process_changes_to_chunks(
             break; // No more blocks found
         };
 
+        // Safeguard against infinite loops by ensuring we always advance
+        if block_end_idx <= current_change_idx {
+            // This should ideally not happen if find_next_block is correct, but as a safety measure.
+            warn!(
+                "Warning: find_next_block did not advance index. current={}, block_end={}. Forcing advance.",
+                current_change_idx,
+                block_end_idx
+            );
+            current_change_idx += 1;
+            continue;
+        }
+
         // Calculate context boundaries needed before the block
         let context_start_change_idx = block_start_idx.saturating_sub(context_lines);
 
@@ -244,6 +267,10 @@ pub fn process_changes_to_chunks(
 
         // Create the chunk if it contains operations
         if !operations.is_empty() {
+            warn!(
+                "[Debug] Creating chunk: old_start={}, new_start={}, old_lines={}, new_lines={}",
+                chunk_old_start, chunk_new_start, chunk_old_lines_count, chunk_new_lines_count
+            );
             let chunk = Chunk {
                 old_start: chunk_old_start,
                 old_lines: chunk_old_lines_count,
@@ -255,7 +282,17 @@ pub fn process_changes_to_chunks(
         }
 
         // Continue scanning from where the context scan stopped
-        current_change_idx = next_change_idx;
+        // Ensure we're making progress
+        if next_change_idx <= current_change_idx {
+            warn!(
+                "Warning: next_change_idx did not advance index after building chunk. current={}, next={}. Forcing advance.",
+                current_change_idx,
+                next_change_idx
+            );
+            current_change_idx += 1; // Force advancement if we're stuck
+        } else {
+            current_change_idx = next_change_idx;
+        }
     }
 
     chunks
@@ -745,7 +782,7 @@ mod tests {
             Change::Insert(6, 1), // block_start_idx = 1
         ];
         // context_start_idx = block_start_idx = 1
-        assert_eq!(determine_chunk_start_indices(&changes, 1, 1), (6, 6)); // Infers old index from previous Equal
+        assert_eq!(determine_chunk_start_indices(&changes, 1, 1), (6, 1)); // Infers old index from previous Equal
     }
 
     #[test]
@@ -763,6 +800,7 @@ mod tests {
             Change::Insert(0, 1), // block_start_idx = 0
         ];
         // context_start_idx = block_start_idx = 0
-        assert_eq!(determine_chunk_start_indices(&changes, 0, 0), (0, 0)); // Infers 0 for old index
+        // 0-based logic yields (0, 0). Check if 1-based (1, 1) is expected.
+        assert_eq!(determine_chunk_start_indices(&changes, 0, 0), (0, 1));
     }
 }

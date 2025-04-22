@@ -1,6 +1,6 @@
 use crate::{Chunk, Error, Operation, Patch};
 use std::borrow::Cow;
-use tracing::debug;
+use tracing::{debug, warn};
 
 // Constants for search and matching
 const SEARCH_RANGE: usize = 50;
@@ -387,7 +387,7 @@ impl Patcher {
         // Strategy 2: Find best fuzzy match based on similarity score
         if let Some(pos) = self.find_fuzzy_context_match(lines, context_lines, search_range.clone())
         {
-            println!(
+            warn!(
                 "Warning: Patch applied using fuzzy matching (expected line {}, found at {}).",
                 expected_start_line + 1,
                 pos + 1
@@ -399,7 +399,7 @@ impl Patcher {
         if let Some(pos) =
             self.find_partial_context_match(lines, context_lines, search_range.clone())
         {
-            println!(
+            warn!(
                 "Warning: Patch applied using lenient partial matching (expected line {}, found at {}).",
                 expected_start_line + 1,
                 pos + 1
@@ -421,7 +421,7 @@ impl Patcher {
                 }
             }
             if matches_leniently {
-                println!(
+                warn!(
                     "Warning: Patch applied at expected position ({}) using lenient context check.",
                     expected_start_line + 1
                 );

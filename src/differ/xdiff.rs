@@ -1,3 +1,5 @@
+use tracing::warn;
+
 use crate::differ::{Change, DiffAlgorithm};
 use crate::{Differ, Patch};
 use std::cmp::{max, min};
@@ -101,7 +103,7 @@ impl<'a> XDiffDiffer<'a> {
 
         if result.is_err() {
             // Handle error case - maybe return empty changes or panic
-            eprintln!("XDiff algorithm failed.");
+            warn!("XDiff algorithm failed.");
             return vec![];
         }
 
@@ -535,14 +537,14 @@ impl<'a> XDiffDiffer<'a> {
             else if env.need_min && ec >= env.mxcost {
                 // Avoid infinite loop if need_min is true and no overlap found within cost limit
                 // This condition isn't explicitly in C's xdl_split loop, but needed for safety
-                eprintln!("XDiff: Max cost reached in minimal mode without finding overlap.");
+                warn!("XDiff: Max cost reached in minimal mode without finding overlap.");
                 return Err(()); // Indicate failure
             }
         } // End main loop (ec)
 
         // Should not be reached if logic is correct, but needed for compiler
         // The loop should always terminate by finding an overlap or hitting a cutoff/error condition.
-        eprintln!("XDiff: find_split_point loop exited unexpectedly.");
+        warn!("XDiff: find_split_point loop exited unexpectedly.");
         Err(())
     }
 
@@ -629,7 +631,7 @@ impl<'a> XDiffDiffer<'a> {
                     }
                     // If we didn't advance despite having lines left, break defensively.
                     if !advanced {
-                        eprintln!("XDiff build_script stuck on unmarked changes.");
+                        warn!("XDiff build_script stuck on unmarked changes.");
                         break;
                     }
                 }
