@@ -1,4 +1,6 @@
 use crate::{Chunk, Error, Operation, Patch};
+use std::borrow::Cow;
+use tracing::debug;
 
 // Constants for search and matching
 const SEARCH_RANGE: usize = 50;
@@ -6,7 +8,6 @@ const FUZZY_MATCH_THRESHOLD: f64 = 0.7;
 const LENIENT_MATCH_THRESHOLD: f64 = 0.6;
 const PREFIX_MATCH_SCORE: f64 = 0.8;
 const SUBSTRING_MATCH_SCORE: f64 = 0.75;
-const COMBINED_SCORE_THRESHOLD: f64 = 0.5;
 
 /// Applies a `Patch` to content.
 #[derive(Debug)]
@@ -19,13 +20,6 @@ pub struct Patcher {
 struct MatchResult {
     position: usize,
     score: f64,
-}
-
-/// Holds information about the score of a potential match position.
-#[derive(Debug)]
-struct ScoreInfo {
-    total_score: f64,
-    matches: usize,
 }
 
 impl Patcher {
@@ -47,55 +41,90 @@ impl Patcher {
     /// * `Err(Error)` - If the patch cannot be applied cleanly.
     pub fn apply(&self, content: &str, reverse: bool) -> Result<String, Error> {
         let lines: Vec<&str> = content.lines().collect();
-        let mut result_lines: Vec<String> = Vec::with_capacity(lines.len()); // Pre-allocate near original size
+        let estimated_capacity = content
+            .len()
+            .saturating_add(self.estimate_patch_size_delta());
+        let mut result = String::with_capacity(estimated_capacity);
         let mut current_line_index = 0;
+        let mut first_line_written = true;
 
         for chunk in &self.patch.chunks {
-            let (expected_start_line, operations) = self.prepare_chunk_operations(chunk, reverse);
+            let (expected_start_line, operations_cow) =
+                self.prepare_chunk_operations(chunk, reverse);
+            let operations = operations_cow.as_ref();
 
-            // Find the actual position where the chunk should be applied
             let actual_start_line = self.find_chunk_start_position(
                 &lines,
                 current_line_index,
                 expected_start_line,
-                &operations,
+                operations,
             )?;
 
-            // Copy lines from the original content up to the start of the chunk
-            current_line_index = self.copy_lines_until(
+            current_line_index = self.append_lines_until(
                 &lines,
                 current_line_index,
                 actual_start_line,
-                &mut result_lines,
+                &mut result,
+                &mut first_line_written,
             )?;
 
-            // Apply the operations (add, remove, context) within the chunk
-            current_line_index = self.apply_chunk_operations(
+            current_line_index = self.apply_chunk_operations_to_string(
                 &lines,
                 current_line_index,
-                &operations,
-                &mut result_lines,
+                operations,
+                &mut result,
+                &mut first_line_written,
             )?;
         }
 
-        // Copy any remaining lines from the original content after the last chunk
-        self.copy_remaining_lines(&lines, current_line_index, &mut result_lines);
+        self.append_remaining_lines(
+            &lines,
+            current_line_index,
+            &mut result,
+            &mut first_line_written,
+        );
 
-        // Join the result lines back into a single string
-        Ok(result_lines.join("\n"))
+        Ok(result)
+    }
+
+    /// Estimates the change in total content size based on Add/Remove operations.
+    /// This helps pre-allocate the result String more accurately.
+    fn estimate_patch_size_delta(&self) -> usize {
+        self.patch.chunks.iter().fold(0, |acc, c| {
+            let added_len: usize = c
+                .operations
+                .iter()
+                .filter_map(|op| match op {
+                    Operation::Add(s) => Some(s.len() + 1),
+                    _ => None,
+                })
+                .sum();
+            let removed_len: usize = c
+                .operations
+                .iter()
+                .filter_map(|op| match op {
+                    Operation::Remove(s) => Some(s.len() + 1),
+                    _ => None,
+                })
+                .sum();
+            acc.saturating_add(added_len).saturating_sub(removed_len)
+        })
     }
 
     /// Prepares chunk operations based on whether the patch is being applied normally or in reverse.
+    /// Returns a Cow to avoid cloning operations when not reversing.
     fn prepare_chunk_operations<'a>(
         &self,
         chunk: &'a Chunk,
         reverse: bool,
-    ) -> (usize, Vec<Operation>) {
+    ) -> (usize, Cow<'a, [Operation]>) {
         if reverse {
-            // Use new_start and reverse operations for reverse patching
-            (chunk.new_start, self.reverse_operations(&chunk.operations))
+            (
+                chunk.new_start,
+                Cow::Owned(self.reverse_operations(&chunk.operations)),
+            )
         } else {
-            (chunk.old_start, chunk.operations.clone())
+            (chunk.old_start, Cow::Borrowed(&chunk.operations))
         }
     }
 
@@ -111,49 +140,61 @@ impl Patcher {
             .collect()
     }
 
-    /// Copies lines from the source `lines` slice to `result_lines` until the `target_line_index` is reached.
-    fn copy_lines_until(
+    /// Appends lines from the source `lines` slice to the `result` String until the `target_line_index`.
+    fn append_lines_until(
         &self,
         lines: &[&str],
         mut current_line_index: usize,
         target_line_index: usize,
-        result_lines: &mut Vec<String>,
+        result: &mut String,
+        first_line_written: &mut bool,
     ) -> Result<usize, Error> {
         while current_line_index < target_line_index {
             if current_line_index >= lines.len() {
-                // This indicates the target line calculated by find_chunk_start_position is out of bounds
                 return Err(Error::ApplyError(format!(
                     "Calculated chunk start {} is beyond content length {}",
                     target_line_index + 1,
                     lines.len()
                 )));
             }
-            result_lines.push(lines[current_line_index].to_string());
+            if !*first_line_written {
+                result.push('\n');
+            } else {
+                *first_line_written = false;
+            }
+            result.push_str(lines[current_line_index]);
             current_line_index += 1;
         }
         Ok(current_line_index)
     }
 
-    /// Copies all remaining lines from the source `lines` slice to `result_lines`.
-    fn copy_remaining_lines(
+    /// Appends all remaining lines from the source `lines` slice to the `result` String.
+    fn append_remaining_lines(
         &self,
         lines: &[&str],
         mut current_line_index: usize,
-        result_lines: &mut Vec<String>,
+        result: &mut String,
+        first_line_written: &mut bool,
     ) {
         while current_line_index < lines.len() {
-            result_lines.push(lines[current_line_index].to_string());
+            if !*first_line_written {
+                result.push('\n');
+            } else {
+                *first_line_written = false;
+            }
+            result.push_str(lines[current_line_index]);
             current_line_index += 1;
         }
     }
 
-    /// Applies the operations within a single chunk (add, remove, context).
-    fn apply_chunk_operations(
+    /// Applies the operations within a single chunk (add, remove, context) directly to the result String.
+    fn apply_chunk_operations_to_string(
         &self,
         lines: &[&str],
         mut current_line_index: usize,
         operations: &[Operation],
-        result_lines: &mut Vec<String>,
+        result: &mut String,
+        first_line_written: &mut bool,
     ) -> Result<usize, Error> {
         for op in operations {
             match op {
@@ -163,9 +204,12 @@ impl Patcher {
                             line_num: current_line_index + 1,
                         });
                     }
-                    // Verify context line matches (with flexibility)
                     let actual_line = lines[current_line_index];
-                    if !self.is_context_match(actual_line, expected_line) {
+                    if !Self::lines_match_flexibly(
+                        actual_line,
+                        expected_line,
+                        FUZZY_MATCH_THRESHOLD,
+                    ) {
                         return Err(Error::ApplyError(format!(
                             "Context mismatch at line {}: Expected '{}', got '{}'",
                             current_line_index + 1,
@@ -173,16 +217,24 @@ impl Patcher {
                             actual_line
                         )));
                     }
-                    result_lines.push(actual_line.to_string()); // Preserve original line
+                    if !*first_line_written {
+                        result.push('\n');
+                    } else {
+                        *first_line_written = false;
+                    }
+                    result.push_str(actual_line);
                     current_line_index += 1;
                 }
                 Operation::Add(line_to_add) => {
-                    result_lines.push(line_to_add.clone());
+                    if !*first_line_written {
+                        result.push('\n');
+                    } else {
+                        *first_line_written = false;
+                    }
+                    result.push_str(line_to_add);
                 }
                 Operation::Remove(_) => {
-                    // Skip the line in the original content
                     if current_line_index >= lines.len() {
-                        // Trying to remove a line that doesn't exist
                         return Err(Error::LineNotFound {
                             line_num: current_line_index + 1,
                         });
@@ -194,9 +246,11 @@ impl Patcher {
         Ok(current_line_index)
     }
 
-    /// Checks if an actual line from the content matches an expected context line from the patch.
-    /// Uses increasingly lenient matching strategies.
-    fn is_context_match(&self, actual: &str, expected: &str) -> bool {
+    // --- Context Matching Logic Consolidation ---
+
+    /// Checks if an actual line from the content matches an expected context line from the patch
+    /// using increasingly lenient matching strategies and a given threshold.
+    fn lines_match_flexibly(actual: &str, expected: &str, fuzzy_threshold: f64) -> bool {
         // 1. Exact match
         if actual == expected {
             return true;
@@ -208,6 +262,7 @@ impl Patcher {
         }
 
         // 3. Normalize whitespace (trim and collapse multiple spaces)
+        // Avoid normalization allocation if strings are identical after trim
         let normalized_actual = normalize_whitespace(actual);
         let normalized_expected = normalize_whitespace(expected);
         if normalized_actual == normalized_expected {
@@ -215,7 +270,8 @@ impl Patcher {
         }
 
         // 4. Fuzzy match based on content similarity
-        similarity_score(&normalized_actual, &normalized_expected) >= FUZZY_MATCH_THRESHOLD
+        // Use normalized versions for fuzzy matching as well
+        similarity_score(&normalized_actual, &normalized_expected) >= fuzzy_threshold
     }
 
     // --- Chunk Position Finding Logic ---
@@ -225,8 +281,8 @@ impl Patcher {
     fn find_chunk_start_position(
         &self,
         lines: &[&str],
-        search_start_index: usize,  // Where to begin searching in `lines`
-        expected_start_line: usize, // The line number from the patch header (0-based)
+        search_start_index: usize,
+        expected_start_line: usize,
         operations: &[Operation],
     ) -> Result<usize, Error> {
         // Extract only the leading context lines from the chunk's operations for positioning.
@@ -236,7 +292,7 @@ impl Patcher {
             .take_while(|op| matches!(op, Operation::Context(_)))
             .map(|op| match op {
                 Operation::Context(line) => line.as_str(),
-                _ => unreachable!(), // take_while ensures this
+                _ => unreachable!(),
             })
             .collect();
 
@@ -284,9 +340,10 @@ impl Patcher {
                 for (i, expected_ctx) in context_lines.iter().enumerate() {
                     if i >= lines.len() {
                         // Cannot check beyond the actual content length
-                        break; // Stop checking if we run out of lines
+                        break;
                     }
-                    if !self.is_flexible_line_match(lines[i], expected_ctx) {
+                    if !Self::lines_match_flexibly(lines[i], expected_ctx, LENIENT_MATCH_THRESHOLD)
+                    {
                         // Use flexible match
                         matches_at_zero = false;
                         break;
@@ -310,7 +367,7 @@ impl Patcher {
             (expected_start_line + half_range + context_lines.len()).min(file_len);
         // Ensure the range is valid (start <= end)
         let search_range = if search_range_start > search_range_end {
-            search_range_start..search_range_start // Empty range if start > end
+            search_range_start..search_range_start
         } else {
             search_range_start..search_range_end
         };
@@ -328,7 +385,7 @@ impl Patcher {
                 "Warning: Patch applied using fuzzy matching (expected line {}, found at {}).",
                 expected_start_line + 1,
                 pos + 1
-            ); // Consider using a logger or returning this info
+            );
             return Ok(pos);
         }
 
@@ -340,7 +397,7 @@ impl Patcher {
                 "Warning: Patch applied using lenient partial matching (expected line {}, found at {}).",
                 expected_start_line + 1,
                 pos + 1
-            ); // Consider using a logger or returning this info
+            );
             return Ok(pos);
         }
 
@@ -348,7 +405,11 @@ impl Patcher {
         if expected_start_line + context_lines.len() <= lines.len() {
             let mut matches_leniently = true;
             for (i, expected_ctx) in context_lines.iter().enumerate() {
-                if !self.is_flexible_line_match(lines[expected_start_line + i], expected_ctx) {
+                if !Self::lines_match_flexibly(
+                    lines[expected_start_line + i],
+                    expected_ctx,
+                    LENIENT_MATCH_THRESHOLD,
+                ) {
                     matches_leniently = false;
                     break;
                 }
@@ -357,7 +418,7 @@ impl Patcher {
                 println!(
                     "Warning: Patch applied at expected position ({}) using lenient context check.",
                     expected_start_line + 1
-                ); // Consider using a logger or returning this info
+                );
                 return Ok(expected_start_line);
             }
         }
@@ -431,13 +492,14 @@ impl Patcher {
 
                 let avg_score = total_score / context_lines.len() as f64;
 
-                if avg_score >= FUZZY_MATCH_THRESHOLD {
-                    if best_match.is_none() || avg_score > best_match.as_ref().unwrap().score {
-                        best_match = Some(MatchResult {
-                            position: index,
-                            score: avg_score,
-                        });
-                    }
+                debug!("Fuzzy match score at index {}: {:.4}", index, avg_score);
+                if avg_score >= FUZZY_MATCH_THRESHOLD
+                    && (best_match.is_none() || avg_score > best_match.as_ref().unwrap().score)
+                {
+                    best_match = Some(MatchResult {
+                        position: index,
+                        score: avg_score,
+                    });
                 }
             });
 
@@ -455,7 +517,7 @@ impl Patcher {
             return None;
         }
 
-        let mut best_match: Option<(usize, usize)> = None; // (position, match_count)
+        let mut best_match: Option<(usize, usize)> = None;
 
         lines
             .windows(context_lines.len())
@@ -466,27 +528,24 @@ impl Patcher {
                 let match_count = window
                     .iter()
                     .zip(context_lines.iter())
-                    .filter(|(actual, expected)| self.is_flexible_line_match(actual, expected))
+                    .filter(|(actual, expected)| {
+                        Self::lines_match_flexibly(actual, expected, LENIENT_MATCH_THRESHOLD)
+                    })
                     .count();
 
                 let match_ratio = match_count as f64 / context_lines.len() as f64;
-
-                if match_ratio >= LENIENT_MATCH_THRESHOLD {
-                    if best_match.is_none() || match_count > best_match.as_ref().unwrap().1 {
-                        best_match = Some((index, match_count));
-                    }
+                debug!(
+                    "Lenient match count at index {}: {}, ratio: {:.4}",
+                    index, match_count, match_ratio
+                );
+                if match_ratio >= LENIENT_MATCH_THRESHOLD
+                    && (best_match.is_none() || match_count > best_match.as_ref().unwrap().1)
+                {
+                    best_match = Some((index, match_count));
                 }
             });
 
         best_match.map(|(pos, _)| pos)
-    }
-
-    /// Checks if a line matches expected context using flexible criteria (exact, trimmed, normalized, fuzzy).
-    fn is_flexible_line_match(&self, actual: &str, expected: &str) -> bool {
-        actual == expected
-            || actual.trim() == expected.trim()
-            || normalize_whitespace(actual) == normalize_whitespace(expected)
-            || similarity_score(actual, expected) > LENIENT_MATCH_THRESHOLD
     }
 }
 
@@ -495,27 +554,48 @@ impl Patcher {
 /// Normalizes whitespace in a string slice:
 /// 1. Trims leading/trailing whitespace.
 /// 2. Collapses multiple internal whitespace characters into a single space.
-fn normalize_whitespace(text: &str) -> String {
+fn normalize_whitespace(text: &str) -> Cow<str> {
     let trimmed = text.trim();
     if trimmed.is_empty() {
-        return String::new();
+        return Cow::Borrowed("");
     }
-    let mut result = String::with_capacity(trimmed.len());
-    let mut last_char_was_whitespace = false;
 
+    let mut needs_normalization = false;
+    let mut last_char_was_whitespace = false;
+    if text.len() != trimmed.len() {
+        needs_normalization = true;
+    } else {
+        for c in trimmed.chars() {
+            if c.is_whitespace() {
+                if last_char_was_whitespace {
+                    needs_normalization = true;
+                    break;
+                }
+                last_char_was_whitespace = true;
+            } else {
+                last_char_was_whitespace = false;
+            }
+        }
+    }
+
+    if !needs_normalization {
+        return Cow::Borrowed(trimmed);
+    }
+
+    let mut result = String::with_capacity(trimmed.len());
+    last_char_was_whitespace = false;
     for c in trimmed.chars() {
         if c.is_whitespace() {
             if !last_char_was_whitespace {
-                result.push(' '); // Append a single space
+                result.push(' ');
                 last_char_was_whitespace = true;
             }
-            // Skip consecutive whitespace
         } else {
             result.push(c);
             last_char_was_whitespace = false;
         }
     }
-    result
+    Cow::Owned(result)
 }
 
 /// Calculates a similarity score between two strings (0.0 to 1.0).
@@ -524,28 +604,27 @@ fn similarity_score(a: &str, b: &str) -> f64 {
     if a == b {
         return 1.0;
     }
-    // Use normalized versions for comparison if not identical
     let norm_a = normalize_whitespace(a);
     let norm_b = normalize_whitespace(b);
     if norm_a == norm_b {
-        // Consider whitespace normalized match as very high similarity, but not perfect
         return 0.95;
     }
 
     if norm_a.is_empty() || norm_b.is_empty() {
-        return 0.0; // No similarity if one is empty after normalization
+        return 0.0;
     }
 
-    // Check for prefix/substring containment with normalized strings
-    if norm_a.starts_with(&norm_b) || norm_b.starts_with(&norm_a) {
-        return calculate_length_based_score(&norm_a, &norm_b, PREFIX_MATCH_SCORE);
+    let norm_a_ref = norm_a.as_ref();
+    let norm_b_ref = norm_b.as_ref();
+
+    if norm_a_ref.starts_with(norm_b_ref) || norm_b_ref.starts_with(norm_a_ref) {
+        return calculate_length_based_score(norm_a_ref, norm_b_ref, PREFIX_MATCH_SCORE);
     }
-    if norm_a.contains(&norm_b) || norm_b.contains(&norm_a) {
-        return calculate_length_based_score(&norm_a, &norm_b, SUBSTRING_MATCH_SCORE);
+    if norm_a_ref.contains(norm_b_ref) || norm_b_ref.contains(norm_a_ref) {
+        return calculate_length_based_score(norm_a_ref, norm_b_ref, SUBSTRING_MATCH_SCORE);
     }
 
-    // Fallback to Jaccard similarity on words
-    calculate_jaccard_similarity(&norm_a, &norm_b)
+    calculate_jaccard_similarity(norm_a_ref, norm_b_ref)
 }
 
 /// Calculates a score boosted by a base score, adjusted by the length ratio.
@@ -557,7 +636,6 @@ fn calculate_length_based_score(a: &str, b: &str, base_score: f64) -> f64 {
     }
     let max_len = len_a.max(len_b);
     let min_len = len_a.min(len_b);
-    // The score increases from base_score towards 1.0 as the length ratio approaches 1
     base_score + ((1.0 - base_score) * (min_len / max_len))
 }
 
@@ -569,7 +647,7 @@ fn calculate_jaccard_similarity(a: &str, b: &str) -> f64 {
     let words_b: HashSet<&str> = b.split_whitespace().collect();
 
     if words_a.is_empty() && words_b.is_empty() {
-        return 1.0; // Two empty strings are considered identical here
+        return 1.0;
     }
     if words_a.is_empty() || words_b.is_empty() {
         return 0.0;
@@ -579,7 +657,7 @@ fn calculate_jaccard_similarity(a: &str, b: &str) -> f64 {
     let union_size = words_a.union(&words_b).count() as f64;
 
     if union_size == 0.0 {
-        1.0 // Avoid division by zero if both sets somehow end up empty after split
+        1.0
     } else {
         intersection_size / union_size
     }
@@ -808,6 +886,24 @@ mod tests {
         assert_eq!(normalize_whitespace("nochange"), "nochange");
         assert_eq!(normalize_whitespace("   "), "");
         assert_eq!(normalize_whitespace(""), "");
+
+        // Test borrowing
+        let s1 = "nochange";
+        let normalized_s1 = normalize_whitespace(s1);
+        assert!(
+            matches!(normalized_s1, Cow::Borrowed(_)),
+            "Should borrow for nochange"
+        );
+        assert_eq!(normalized_s1.as_ref(), s1);
+
+        // Test owning
+        let s2 = "  needs change  ";
+        let normalized_s2 = normalize_whitespace(s2);
+        assert!(
+            matches!(normalized_s2, Cow::Owned(_)),
+            "Should own for changed string"
+        );
+        assert_eq!(normalized_s2.as_ref(), "needs change");
     }
 
     #[test]

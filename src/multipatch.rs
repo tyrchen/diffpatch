@@ -58,58 +58,71 @@ impl MultifilePatch {
     /// Handles concatenated diffs (multiple `diff --git ...` sections).
     pub fn parse(content: &str) -> Result<Self, Error> {
         let mut patches = Vec::new();
-        let mut current_patch_lines: Vec<&str> = Vec::new();
-        let mut in_patch_header = false;
+        let lines: Vec<&str> = content.lines().collect();
+        if lines.is_empty() {
+            // Handle empty input gracefully
+            return Ok(Self { patches: vec![] });
+        }
 
-        for line in content.lines() {
+        let mut patch_start_index: Option<usize> = None;
+
+        for (i, line) in lines.iter().enumerate() {
             if line.starts_with("diff --git ") {
-                // Found the start of a new patch section.
-                // Parse the previous patch if we have accumulated lines for it.
-                if !current_patch_lines.is_empty() {
-                    let patch_content = current_patch_lines.join("\n");
-                    match Patch::parse(&patch_content) {
-                        Ok(patch) => patches.push(patch),
-                        Err(e) => {
-                            // Log or return error for the specific malformed patch section
-                            eprintln!(
-                                "Warning: Skipping malformed patch section: {}\nContent:\n{}",
-                                e, patch_content
-                            );
+                // If we found the start of a new patch, process the previous one (if any)
+                if let Some(start) = patch_start_index {
+                    let patch_lines_slice = &lines[start..i];
+                    // Check if the slice is non-empty before joining and parsing
+                    if !patch_lines_slice.is_empty() {
+                        let patch_content = patch_lines_slice.join("\n"); // Join only the slice
+                        match Patch::parse(&patch_content) {
+                            Ok(patch) => patches.push(patch),
+                            Err(e) => {
+                                // Provide more context in the warning
+                                eprintln!(
+                                    "Warning: Skipping malformed patch section (lines {}-{}): {}\n--- Patch Content Start ---\n{}\n--- Patch Content End ---",
+                                    start + 1, i, e, patch_content
+                                );
+                            }
                         }
                     }
-                    current_patch_lines.clear();
                 }
-                // Start accumulating lines for the new patch
-                current_patch_lines.push(line);
-                in_patch_header = true;
-            } else if !current_patch_lines.is_empty() {
-                // Continue accumulating lines for the current patch section.
-                // Check if we are moving from header (`index`, `mode` lines) to content (`---`)
-                if in_patch_header && line.starts_with("--- ") {
-                    in_patch_header = false;
-                }
-                // Only add lines that belong to the current patch definition
-                // (i.e., starting from `diff --git` or after)
-                current_patch_lines.push(line);
+                // Mark the start line index of the new patch section
+                patch_start_index = Some(i);
             }
-            // Ignore lines before the first "diff --git " line
         }
 
-        // Parse the last patch section in the file.
-        if !current_patch_lines.is_empty() {
-            let patch_content = current_patch_lines.join("\n");
-            match Patch::parse(&patch_content) {
-                Ok(patch) => patches.push(patch),
-                Err(e) => {
-                    eprintln!("Warning: Skipping malformed patch section at end of file: {}\nContent:\n{}", e, patch_content);
+        // Process the last patch section found in the file (from last diff to EOF)
+        if let Some(start) = patch_start_index {
+            let patch_lines_slice = &lines[start..]; // Slice from start to the end
+            if !patch_lines_slice.is_empty() {
+                let patch_content = patch_lines_slice.join("\n"); // Join the last slice
+                match Patch::parse(&patch_content) {
+                    Ok(patch) => patches.push(patch),
+                    Err(e) => {
+                        eprintln!(
+                            "Warning: Skipping malformed patch section at end of file (lines {}-{}): {}\n--- Patch Content Start ---\n{}\n--- Patch Content End ---",
+                            start + 1, lines.len(), e, patch_content
+                        );
+                    }
                 }
             }
         }
 
+        // Check for validity: If the input wasn't empty but no patches were parsed,
+        // determine if it was due to missing 'diff' lines or parsing errors.
         if patches.is_empty() && !content.trim().is_empty() {
-            return Err(Error::InvalidPatchFormat(
-                "No valid patch sections found starting with 'diff --git '".to_string(),
-            ));
+            if !content.lines().any(|l| l.starts_with("diff --git ")) {
+                // Content exists but no 'diff --git' lines found
+                return Err(Error::InvalidPatchFormat(
+                    "No patch sections found starting with 'diff --git '".to_string(),
+                ));
+            } else {
+                // Found 'diff --git' lines, but all sections failed parsing (warnings printed above)
+                return Err(Error::InvalidPatchFormat(
+                    "Found 'diff --git' lines, but failed to parse any valid patch sections."
+                        .to_string(),
+                ));
+            }
         }
 
         Ok(Self { patches })
@@ -117,7 +130,7 @@ impl MultifilePatch {
 
     /// Parses a multi-file patch from a file specified by the path.
     pub fn parse_from_file<P: AsRef<Path>>(path: P) -> Result<Self, Error> {
-        let content = fs::read_to_string(path.as_ref()).map_err(|e| Error::IoError(e))?;
+        let content = fs::read_to_string(path.as_ref()).map_err(Error::IoError)?;
         Self::parse(&content)
     }
 }
@@ -659,7 +672,6 @@ index def..000
         let dir_path = temp_path.join(file_name); // Create a directory where the file should be
         fs::create_dir(&dir_path)?;
 
-        let old_content = "a";
         let new_content = "b";
         // Directly create a patch for a new file (without using Differ)
         let patch = Patch {
