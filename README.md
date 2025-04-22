@@ -20,7 +20,7 @@ Add to your Cargo.toml:
 
 ```toml
 [dependencies]
-diffpatch = "0.1.0"
+diffpatch = { version = "0.1.0", default-features = false }
 ```
 
 Or install the CLI tool:
@@ -164,25 +164,25 @@ fn main() {
 ### Generate a Patch
 
 ```bash
-diffpatch-cli generate --old original_file.txt --new modified_file.txt --output patch.diff
+diffpatch generate --old original_file.txt --new modified_file.txt --output patch.diff
 ```
 
 ### Apply a Patch
 
 ```bash
-diffpatch-cli apply --patch patch.diff --file original_file.txt --output result.txt
+diffpatch apply --patch patch.diff --file original_file.txt --output result.txt
 ```
 
 ### Apply a Patch in Reverse
 
 ```bash
-diffpatch-cli apply --patch patch.diff --file modified_file.txt --output original.txt --reverse
+diffpatch apply --patch patch.diff --file modified_file.txt --output original.txt --reverse
 ```
 
 ### Apply a Multi-file Patch
 
 ```bash
-diffpatch-cli apply-multi --patch changes.patch [--directory /path/to/target] [--reverse]
+diffpatch apply-multi --patch changes.patch [--directory /path/to/target] [--reverse]
 ```
 
 ## Data Structures
