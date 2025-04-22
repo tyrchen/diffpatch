@@ -107,6 +107,8 @@ impl Patcher {
                             )));
                         }
 
+                        // Preserve the original line rather than replacing it with the context line
+                        // This maintains any extra content that might be in the original line
                         result.push(lines[current_line].to_string());
                         current_line += 1;
                     }
@@ -366,6 +368,14 @@ fn similarity_score(a: &str, b: &str) -> f64 {
         return 0.8 + (0.2 * (min_len / max_len)); // At least 80% similarity for prefix matches
     }
 
+    // Check if one string contains the other (not just as prefix)
+    if a.contains(b) || b.contains(a) {
+        // Calculate similarity based on length difference
+        let max_len = a.len().max(b.len()) as f64;
+        let min_len = a.len().min(b.len()) as f64;
+        return 0.75 + (0.25 * (min_len / max_len)); // At least 75% similarity for substring matches
+    }
+
     // Split into words and compare
     let words_a: Vec<&str> = a.split_whitespace().collect();
     let words_b: Vec<&str> = b.split_whitespace().collect();
@@ -468,10 +478,9 @@ mod tests {
 
     #[test]
     fn test_apply_patch_with_different_context() {
-        // In our current implementation, when applying a patch to a file with
+        // In our improved implementation, when applying a patch to a file with
         // different context (where line3 has extra content),
-        // the current behavior is that we replace line3 with the exact content from the patch.
-        // This test documents this behavior.
+        // we should preserve the extra content when applying context lines
         let old = "start\n  line1  \nline2\nline3 with extra stuff\nend";
         let patch_content = "line1\nline2\nline3";
         let patch_target = "line1\nmodified line\nline3";
@@ -482,13 +491,9 @@ mod tests {
         let patcher = Patcher::new(patch);
         let result = patcher.apply(old, false).unwrap();
 
-        // The result will replace line3 with the exact "line3" from the patch
-        // and won't preserve the "with extra stuff" part with the current implementation
-        let expected = "start\n  line1  \nmodified line\nline3\nend";
+        // The result should preserve "with extra stuff" part since we're keeping
+        // the original content for context lines
+        let expected = "start\n  line1  \nmodified line\nline3 with extra stuff\nend";
         assert_eq!(result, expected);
-
-        // If we want to preserve the "with extra stuff" part, we would need a
-        // more sophisticated matching algorithm that can identify and preserve
-        // parts of the line not specified in the patch.
     }
 }

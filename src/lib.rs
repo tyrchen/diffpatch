@@ -23,6 +23,24 @@ pub enum Error {
     FileNotFound(String),
 }
 
+/// The Diff trait allows implementing a diffing algorithm for custom types
+pub trait Diff {
+    /// The error type returned by the diff implementation
+    type Error;
+
+    /// Called when elements are equal between sequences
+    fn equal(&mut self, old_idx: usize, new_idx: usize, count: usize) -> Result<(), Self::Error>;
+
+    /// Called when elements need to be deleted from the old sequence
+    fn delete(&mut self, old_idx: usize, count: usize, new_idx: usize) -> Result<(), Self::Error>;
+
+    /// Called when elements need to be inserted from the new sequence
+    fn insert(&mut self, old_idx: usize, new_idx: usize, count: usize) -> Result<(), Self::Error>;
+
+    /// Called when the diff is complete
+    fn finish(&mut self) -> Result<(), Self::Error>;
+}
+
 /// A patch represents all the changes between two versions of a file
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Patch {
@@ -94,6 +112,29 @@ pub struct Chunk {
     pub new_lines: usize,
     /// The operations in this chunk
     pub operations: Vec<Operation>,
+}
+
+/// Myers diff algorithm. Creates a diff between two sequences
+/// using the efficient Myers algorithm. The provided diff callback
+/// will be called for each operation (equal, insert, delete).
+pub fn myers_diff<S, T, D>(
+    d: &mut D,
+    a: &S,
+    a0: usize,
+    a1: usize,
+    b: &T,
+    b0: usize,
+    b1: usize,
+) -> Result<(), D::Error>
+where
+    S: std::ops::Index<usize> + ?Sized,
+    T: std::ops::Index<usize> + ?Sized,
+    T::Output: PartialEq<S::Output>,
+    D: Diff,
+{
+    // Implement the Myers diff algorithm to find shortest edit path
+    // This uses the algorithm from the provided code example
+    differ::diff(d, a, a0, a1, b, b0, b1)
 }
 
 #[cfg(test)]
