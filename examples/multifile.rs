@@ -1,0 +1,152 @@
+use anyhow::Result;
+use diffpatch::{Differ, MultifilePatch, MultifilePatcher};
+use std::fs;
+use std::path::Path;
+
+fn main() -> Result<()> {
+    println!("=== Multi-File Patch Example ===");
+
+    // Setup example directory structure
+    let examples_dir = Path::new("examples");
+    let tmp_dir = examples_dir.join("tmp");
+
+    if !tmp_dir.exists() {
+        fs::create_dir_all(&tmp_dir)?;
+    }
+
+    // Create test files
+    create_test_files(&tmp_dir)?;
+
+    // Create multi-file patch
+    let patch_path = create_multi_file_patch(&tmp_dir)?;
+
+    // Apply the patch to modify files
+    apply_patch(&patch_path, false)?;
+
+    // Apply the patch in reverse to restore original files
+    apply_patch(&patch_path, true)?;
+
+    Ok(())
+}
+
+fn create_test_files(dir: &Path) -> Result<()> {
+    println!("Creating test files...");
+
+    // Define some test files
+    let files = [
+        ("config.json", "{\n  \"name\": \"diffpatch\",\n  \"version\": \"0.1.0\",\n  \"debug\": false\n}"),
+        ("README.txt", "# Test Project\n\nThis is a test project for diffpatch.\n\nMore information will be added later."),
+        ("src/main.rs", "fn main() {\n    println!(\"Hello, world!\");\n}"),
+    ];
+
+    // Create each file
+    for (path, content) in &files {
+        let file_path = dir.join(path);
+
+        // Create parent directories if needed
+        if let Some(parent) = file_path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+
+        // Write the file
+        fs::write(&file_path, content)?;
+        println!("  Created: {}", path);
+    }
+
+    println!("Test files created successfully");
+
+    Ok(())
+}
+
+fn create_multi_file_patch(dir: &Path) -> Result<std::path::PathBuf> {
+    println!("\nCreating multi-file patch...");
+
+    // Define the original and modified content pairs
+    let changes = [
+        (
+            "config.json",
+            "{\n  \"name\": \"diffpatch\",\n  \"version\": \"0.1.0\",\n  \"debug\": false\n}",
+            "{\n  \"name\": \"diffpatch\",\n  \"version\": \"0.2.0\",\n  \"debug\": true,\n  \"logLevel\": \"info\"\n}"
+        ),
+        (
+            "README.txt",
+            "# Test Project\n\nThis is a test project for diffpatch.\n\nMore information will be added later.",
+            "# Diffpatch Test\n\nThis is a test project showcasing the diffpatch library.\n\nSee examples for more details."
+        ),
+        (
+            "src/main.rs",
+            "fn main() {\n    println!(\"Hello, world!\");\n}",
+            "fn main() {\n    println!(\"Hello, diffpatch!\");\n    println!(\"Version 0.2.0\");\n}"
+        ),
+    ];
+
+    // Generate patches for each file
+    let mut patches = Vec::new();
+
+    for (path, original, modified) in &changes {
+        let differ = Differ::new(original, modified);
+        let mut patch = differ.generate();
+
+        // Set the file paths in the patch
+        patch.old_file = path.to_string();
+        patch.new_file = path.to_string();
+
+        patches.push(patch);
+        println!("  Created patch for: {}", path);
+    }
+
+    // Create multi-file patch
+    let multi_patch = MultifilePatch::new(patches);
+
+    // Save the patch to a file
+    let patch_path = dir.join("changes.patch");
+    let patch_content = multi_patch
+        .patches
+        .iter()
+        .map(|p| p.to_string())
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    fs::write(&patch_path, patch_content)?;
+
+    println!("Multi-file patch created at: {:?}", patch_path);
+
+    Ok(patch_path)
+}
+
+fn apply_patch(patch_path: &Path, reverse: bool) -> Result<()> {
+    let action = if reverse { "Reverting" } else { "Applying" };
+    println!("\n{} multi-file patch...", action);
+
+    // Parse the patch from file
+    let multi_patch = MultifilePatch::parse_from_file(patch_path)?;
+
+    // Print summary of the patch
+    println!("Patch contains {} files:", multi_patch.patches.len());
+    for patch in &multi_patch.patches {
+        println!("  - {}", patch.old_file);
+    }
+
+    // Apply the patch
+    let multi_patcher = MultifilePatcher::new(multi_patch);
+    let patched_files = multi_patcher.apply_and_write(reverse)?;
+
+    println!(
+        "\nSuccessfully {} changes to {} files:",
+        if reverse { "reverted" } else { "applied" },
+        patched_files.len()
+    );
+
+    for file in patched_files {
+        println!("  - {}", file);
+
+        // Read and display the file content
+        let content = fs::read_to_string(file)?;
+        println!(
+            "    Content (first 50 chars): {}",
+            content.chars().take(50).collect::<String>()
+        );
+    }
+
+    Ok(())
+}
