@@ -567,14 +567,14 @@ struct ScoreInfo {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{differ::DiffAlgorithmType, Differ};
+    use crate::Differ;
 
     #[test]
     fn test_apply_patch() {
         let old = "line1\nline2\nline3\nline4";
         let new = "line1\nline2 modified\nline3\nline4";
 
-        let differ = Differ::new(old, new, DiffAlgorithmType::Myers);
+        let differ = Differ::new(old, new);
         let patch = differ.generate();
 
         let patcher = Patcher::new(patch);
@@ -587,7 +587,7 @@ mod tests {
         let old = "line1\nline2\nline3";
         let new = "line1\nmodified\nline3\nnew line";
 
-        let differ = Differ::new(old, new, DiffAlgorithmType::Myers);
+        let differ = Differ::new(old, new);
         let patch = differ.generate();
 
         let patcher = Patcher::new(patch);
@@ -611,7 +611,7 @@ mod tests {
         let patch_content = "line1\nline2\nline3\nline4";
         let patch_target = "line1\nline2 modified\nline3\nline4";
 
-        let differ = Differ::new(patch_content, patch_target, DiffAlgorithmType::Myers);
+        let differ = Differ::new(patch_content, patch_target);
         let patch = differ.generate();
 
         // Try to apply to the content that has header lines
@@ -629,7 +629,7 @@ mod tests {
         let patch_content = "line1\nline2\nline3";
         let patch_target = "line1\nmodified line\nline3";
 
-        let differ = Differ::new(patch_content, patch_target, DiffAlgorithmType::Myers);
+        let differ = Differ::new(patch_content, patch_target);
         let patch = differ.generate();
 
         let patcher = Patcher::new(patch);
@@ -648,7 +648,7 @@ mod tests {
         let patch_content = "line1\nline2\nline3";
         let patch_target = "line1\nmodified line\nline3";
 
-        let differ = Differ::new(patch_content, patch_target, DiffAlgorithmType::Myers);
+        let differ = Differ::new(patch_content, patch_target);
         let patch = differ.generate();
 
         let patcher = Patcher::new(patch);

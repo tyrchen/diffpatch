@@ -1,5 +1,4 @@
 use anyhow::Result;
-use diffpatch::differ::DiffAlgorithmType;
 use diffpatch::{Differ, MultifilePatch, MultifilePatcher};
 use std::fs;
 use std::path::Path;
@@ -85,7 +84,7 @@ fn create_multi_file_patch(dir: &Path) -> Result<std::path::PathBuf> {
     let mut patches = Vec::new();
 
     for (path, original, modified) in &changes {
-        let differ = Differ::new(original, modified, DiffAlgorithmType::Myers);
+        let differ = Differ::new(original, modified);
         let mut patch = differ.generate();
 
         // Set the file paths in the patch

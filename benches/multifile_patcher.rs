@@ -1,7 +1,4 @@
-use diffpatch::{
-    differ::{DiffAlgorithmType, Differ},
-    MultifilePatch,
-};
+use diffpatch::{differ::Differ, MultifilePatch};
 use divan::{black_box, Bencher};
 use std::collections::HashMap;
 
@@ -71,7 +68,7 @@ fn generate_multi_file_data(file_count: usize) -> (HashMap<String, String>, Mult
         let modified: String = modified_chars.into_iter().collect();
 
         // Create patch
-        let differ = Differ::new(&original, &modified, DiffAlgorithmType::Myers);
+        let differ = Differ::new(&original, &modified);
         let mut patch = differ.generate();
 
         // Set file paths
@@ -141,7 +138,7 @@ fn multi_patch_creation(bencher: Bencher, file_count: usize) {
         let mut patches = Vec::new();
 
         for (filename, original, modified) in &file_pairs {
-            let differ = Differ::new(original, modified, DiffAlgorithmType::Myers);
+            let differ = Differ::new(original, modified);
             let mut patch = differ.generate();
 
             // Set file paths

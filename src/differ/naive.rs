@@ -118,7 +118,7 @@ mod tests {
         let old = "line1\nline2\nline3";
         let new = "line1\nline2\nline3";
 
-        let differ = Differ::new(old, new, DiffAlgorithmType::Naive);
+        let differ = Differ::new_with_algorithm(old, new, DiffAlgorithmType::Naive);
         let naive = NaiveDiffer::new(&differ);
         let patch = naive.generate();
 
@@ -130,7 +130,7 @@ mod tests {
         let old = "line1\nline2\nline3";
         let new = "line1\nline2\nline3\nline4";
 
-        let differ = Differ::new(old, new, DiffAlgorithmType::Naive);
+        let differ = Differ::new_with_algorithm(old, new, DiffAlgorithmType::Naive);
         let naive = NaiveDiffer::new(&differ);
         let patch = naive.generate();
 
@@ -144,7 +144,7 @@ mod tests {
         let old = "line1\nline2\nline3";
         let new = "line1\nline3";
 
-        let differ = Differ::new(old, new, DiffAlgorithmType::Naive);
+        let differ = Differ::new_with_algorithm(old, new, DiffAlgorithmType::Naive);
         let naive = NaiveDiffer::new(&differ);
         let patch = naive.generate();
 
@@ -159,7 +159,7 @@ mod tests {
         let old = "";
         let new = "line1\nline2";
 
-        let differ = Differ::new(old, new, DiffAlgorithmType::Naive);
+        let differ = Differ::new_with_algorithm(old, new, DiffAlgorithmType::Naive);
         let naive = NaiveDiffer::new(&differ);
         let patch = naive.generate();
 
@@ -171,7 +171,7 @@ mod tests {
         let old = "line1\nline2";
         let new = "";
 
-        let differ = Differ::new(old, new, DiffAlgorithmType::Naive);
+        let differ = Differ::new_with_algorithm(old, new, DiffAlgorithmType::Naive);
         let naive = NaiveDiffer::new(&differ);
         let patch = naive.generate();
 

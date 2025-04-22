@@ -292,7 +292,7 @@ impl MultifilePatcher {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{differ::DiffAlgorithmType, Differ};
+    use crate::Differ;
     use std::fs;
     use tempfile::TempDir;
 
@@ -312,14 +312,14 @@ mod tests {
         // Create patches
         let old1 = "line1\nline2\nline3\n";
         let new1 = "line1\nmodified\nline3\n";
-        let differ1 = Differ::new(old1, new1, DiffAlgorithmType::Myers);
+        let differ1 = Differ::new(old1, new1);
         let mut patch1 = differ1.generate();
         patch1.old_file = file1_path.to_str().unwrap().to_string();
         patch1.new_file = file1_path.to_str().unwrap().to_string();
 
         let old2 = "foo\nbar\nbaz\n";
         let new2 = "foo\nbar\nqux\n";
-        let differ2 = Differ::new(old2, new2, DiffAlgorithmType::Myers);
+        let differ2 = Differ::new(old2, new2);
         let mut patch2 = differ2.generate();
         patch2.old_file = file2_path.to_str().unwrap().to_string();
         patch2.new_file = file2_path.to_str().unwrap().to_string();
@@ -477,7 +477,7 @@ diff --git a/file2.txt b/file2.txt
         // Create a patch that expects the content to start at line 0
         let patch_source = "line1\nline2\nline3"; // No trailing newline
         let patch_target = "line1\nmodified line\nline3"; // No trailing newline
-        let differ = Differ::new(patch_source, patch_target, DiffAlgorithmType::Myers);
+        let differ = Differ::new(patch_source, patch_target);
         let mut patch = differ.generate();
         patch.old_file = file_path.to_str().unwrap().to_string();
         patch.new_file = file_path.to_str().unwrap().to_string();

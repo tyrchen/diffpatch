@@ -1,7 +1,4 @@
-use diffpatch::{
-    differ::{DiffAlgorithmType, Differ},
-    Patch, Patcher,
-};
+use diffpatch::{differ::Differ, Patch, Patcher};
 use divan::{black_box, Bencher};
 
 #[global_allocator]
@@ -44,7 +41,7 @@ fn generate_texts_and_patch(size: usize, change_percentage: f64) -> (String, Str
     let modified: String = modified_chars.into_iter().collect();
 
     // Generate patch
-    let differ = Differ::new(&original, &modified, DiffAlgorithmType::Myers);
+    let differ = Differ::new(&original, &modified);
     let patch = differ.generate();
 
     (original, modified, patch)
@@ -67,11 +64,7 @@ fn patch_creation_25pct(bencher: Bencher, size: usize) {
     let (original, modified, _) = generate_texts_and_patch(size, 0.25);
 
     bencher.bench(|| {
-        let differ = Differ::new(
-            black_box(&original),
-            black_box(&modified),
-            DiffAlgorithmType::Myers,
-        );
+        let differ = Differ::new(black_box(&original), black_box(&modified));
         black_box(differ.generate())
     });
 }

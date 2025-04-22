@@ -49,7 +49,7 @@ fn myers_algorithm(bencher: Bencher, size: usize) {
     let (original, modified) = generate_texts(size, 0.25);
 
     bencher.bench(|| {
-        let differ = Differ::new(
+        let differ = Differ::new_with_algorithm(
             black_box(&original),
             black_box(&modified),
             DiffAlgorithmType::Myers,
@@ -64,10 +64,25 @@ fn naive_algorithm(bencher: Bencher, size: usize) {
     let (original, modified) = generate_texts(size, 0.25);
 
     bencher.bench(|| {
-        let differ = Differ::new(
+        let differ = Differ::new_with_algorithm(
             black_box(&original),
             black_box(&modified),
             DiffAlgorithmType::Naive,
+        );
+        black_box(differ.generate())
+    });
+}
+
+// XDiff algorithm benchmarks
+#[divan::bench(args = TEXT_SIZES)]
+fn xdiff_algorithm(bencher: Bencher, size: usize) {
+    let (original, modified) = generate_texts(size, 0.25);
+
+    bencher.bench(|| {
+        let differ = Differ::new_with_algorithm(
+            black_box(&original),
+            black_box(&modified),
+            DiffAlgorithmType::XDiff,
         );
         black_box(differ.generate())
     });

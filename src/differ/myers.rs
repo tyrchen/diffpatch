@@ -201,14 +201,14 @@ impl DiffAlgorithm for MyersDiffer<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{differ::DiffAlgorithmType, Patcher};
+    use crate::Patcher;
 
     #[test]
     fn test_simple_myers_diff() {
         let old = "line1\nline2\nline3";
         let new = "line1\nline2\nline3";
 
-        let differ = Differ::new(old, new, DiffAlgorithmType::Myers);
+        let differ = Differ::new(old, new);
         let myers = MyersDiffer::new(&differ);
         let patch = myers.generate();
 
@@ -220,7 +220,7 @@ mod tests {
         let old = "line1\nline2\nline3";
         let new = "line1\nline2\nline3\nline4";
 
-        let differ = Differ::new(old, new, DiffAlgorithmType::Myers);
+        let differ = Differ::new(old, new);
         let myers = MyersDiffer::new(&differ);
         let patch = myers.generate();
 
@@ -234,7 +234,7 @@ mod tests {
         let old = "line1\nline2\nline3";
         let new = "line1\nline3";
 
-        let differ = Differ::new(old, new, DiffAlgorithmType::Myers);
+        let differ = Differ::new(old, new);
         let myers = MyersDiffer::new(&differ);
         let patch = myers.generate();
 
@@ -249,7 +249,7 @@ mod tests {
         let old = "";
         let new = "line1\nline2";
 
-        let differ = Differ::new(old, new, DiffAlgorithmType::Myers);
+        let differ = Differ::new(old, new);
         let myers = MyersDiffer::new(&differ);
         let patch = myers.generate();
 
@@ -261,7 +261,7 @@ mod tests {
         let old = "line1\nline2";
         let new = "";
 
-        let differ = Differ::new(old, new, DiffAlgorithmType::Myers);
+        let differ = Differ::new(old, new);
         let myers = MyersDiffer::new(&differ);
         let patch = myers.generate();
 
@@ -275,7 +275,7 @@ mod tests {
         let old = "line1\nline2\nline3\nline4\nline5";
         let new = "line1\nmodified line\nline3\nline4\nnew line";
 
-        let differ = Differ::new(old, new, DiffAlgorithmType::Myers);
+        let differ = Differ::new(old, new);
         let myers = MyersDiffer::new(&differ);
         let patch = myers.generate();
 
@@ -288,7 +288,7 @@ mod tests {
         let old = "A\nB\nC\nA\nB\nB\nA";
         let new = "C\nB\nA\nB\nA\nC";
 
-        let differ = Differ::new(old, new, DiffAlgorithmType::Myers);
+        let differ = Differ::new(old, new);
         let myers = MyersDiffer::new(&differ);
         let patch = myers.generate();
 

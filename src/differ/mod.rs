@@ -35,7 +35,11 @@ pub struct Differ {
 
 impl Differ {
     /// Create a new Differ with the old and new content
-    pub fn new(old: &str, new: &str, algorithm: DiffAlgorithmType) -> Self {
+    pub fn new(old: &str, new: &str) -> Self {
+        Self::new_with_algorithm(old, new, DiffAlgorithmType::XDiff)
+    }
+
+    pub fn new_with_algorithm(old: &str, new: &str, algorithm: DiffAlgorithmType) -> Self {
         Self {
             algorithm,
             old: old.to_string(),
@@ -339,7 +343,7 @@ mod tests {
         let new = "line1\nline2 modified\nline3\nline4";
 
         // Create a differ
-        let differ = Differ::new(old, new, DiffAlgorithmType::Myers);
+        let differ = Differ::new(old, new);
 
         // Test naive algorithm
         let naive = NaiveDiffer::new(&differ);
@@ -366,7 +370,7 @@ mod tests {
         let new = "This is a changed test file\nwith multiple modified lines\nthat will be completely changed\nand some lines removed\nto test the diff algorithms\nnew line at end\nend of file";
 
         // Create a differ with more context lines
-        let differ = Differ::new(old, new, DiffAlgorithmType::Myers).context_lines(2);
+        let differ = Differ::new(old, new).context_lines(2);
 
         // Test all algorithms and make sure they all produce valid patches
         let naive = NaiveDiffer::new(&differ);
