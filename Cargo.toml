@@ -31,6 +31,9 @@ fastrand = "2.0"
 git2 = "0.20"
 tempfile = "3.19"
 
+[lints.clippy]
+needless-range-loop = "allow"
+
 [[bin]]
 name = "diffpatch"
 path = "src/main.rs"

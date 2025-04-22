@@ -84,6 +84,12 @@ impl Patcher {
             &mut first_line_written,
         );
 
+        // Ensure final newline is present if the original content had one
+        // and the result doesn't already end with one.
+        if content.ends_with('\n') && !result.is_empty() && !result.ends_with('\n') {
+            result.push('\n');
+        }
+
         Ok(result)
     }
 
