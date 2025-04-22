@@ -75,3 +75,22 @@ fn xdiff_algorithm(bencher: Bencher, index: usize) {
             black_box(differ.generate())
         });
 }
+
+// Similar algorithm benchmarks
+#[divan::bench(args = [0, 1], name = "similar")]
+fn similar_algorithm(bencher: Bencher, index: usize) {
+    let pair = FIXTURE_PAIRS[index];
+    let original = load_fixture(pair.0);
+    let modified = load_fixture(pair.1);
+
+    bencher
+        .with_inputs(|| (original.clone(), modified.clone()))
+        .bench_refs(|(original, modified)| {
+            let differ = Differ::new_with_algorithm(
+                black_box(original),
+                black_box(modified),
+                DiffAlgorithmType::Similar,
+            );
+            black_box(differ.generate())
+        });
+}

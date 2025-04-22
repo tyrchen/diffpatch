@@ -65,7 +65,7 @@ impl fmt::Display for Chunk {
 }
 
 /// A patch represents all the changes between two versions of a file
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Patch {
     /// Preemble of the patch, something like "diff -u a/file.txt b/file.txt"
     pub preamble: Option<String>,

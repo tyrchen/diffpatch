@@ -1,12 +1,14 @@
 mod common;
 mod myers;
 mod naive;
+pub mod similar;
 mod xdiff;
 
 use crate::Patch;
 
 pub use myers::MyersDiffer;
 pub use naive::NaiveDiffer;
+pub use similar::SimilarDiffer;
 pub use xdiff::XDiffDiffer;
 
 pub use common::*;
@@ -22,6 +24,7 @@ pub enum DiffAlgorithmType {
     Myers,
     Naive,
     XDiff,
+    Similar,
 }
 
 /// The base Differ struct that orchestrates the diffing process
@@ -67,6 +70,10 @@ impl Differ {
             }
             DiffAlgorithmType::XDiff => {
                 let differ = XDiffDiffer::new(self);
+                differ.generate()
+            }
+            DiffAlgorithmType::Similar => {
+                let differ = SimilarDiffer::new(self);
                 differ.generate()
             }
         }
