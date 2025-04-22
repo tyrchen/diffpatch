@@ -87,4 +87,4 @@ impl Patcher {
 
 ## Testing
 
-Please
+Please add enough unit tests to cover the `Differ` and `Patcher` functionalities. Make sure edge cases are also tested.

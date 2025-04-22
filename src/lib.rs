@@ -1,6 +1,7 @@
 use thiserror::Error;
 
 mod differ;
+mod multipatch;
 mod patch;
 mod patcher;
 
@@ -14,6 +15,12 @@ pub enum Error {
 
     #[error("Line not found: {0}")]
     LineNotFound(String),
+
+    #[error("IO error: {0}")]
+    IoError(#[from] std::io::Error),
+
+    #[error("File not found: {0}")]
+    FileNotFound(String),
 }
 
 /// A patch represents all the changes between two versions of a file
@@ -39,6 +46,28 @@ pub struct Differ {
 /// The Patcher struct is used to apply a patch to content
 pub struct Patcher {
     patch: Patch,
+}
+
+/// Represents a file that has been patched
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PatchedFile {
+    /// Path to the file
+    pub path: String,
+    /// New content of the file
+    pub content: String,
+}
+
+/// A collection of patches for multiple files
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MultifilePatch {
+    /// List of individual file patches
+    pub patches: Vec<Patch>,
+}
+
+/// The MultifilePatcher struct is used to apply multiple patches
+pub struct MultifilePatcher {
+    /// List of patches to apply
+    pub patches: Vec<Patch>,
 }
 
 /// Represents a change operation in the patch

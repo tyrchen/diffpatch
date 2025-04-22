@@ -91,71 +91,14 @@ impl Patch {
 
         while i < lines.len() {
             let chunk_header = lines[i];
-            if !chunk_header.starts_with("@@ ") || !chunk_header.ends_with(" @@") {
-                return Err(Error::InvalidPatchFormat(format!(
-                    "Invalid chunk header: {}",
-                    chunk_header
-                )));
+            if !chunk_header.starts_with("@@ ") {
+                // Skip lines that don't start with @@ - could be empty lines or other git metadata
+                i += 1;
+                continue;
             }
 
-            // Extract the line numbers from the chunk header
-            // Format: @@ -old_start,old_lines +new_start,new_lines @@
-            let header_parts: Vec<&str> = chunk_header
-                .strip_prefix("@@ ")
-                .unwrap_or(chunk_header)
-                .strip_suffix(" @@")
-                .unwrap_or(chunk_header)
-                .split(' ')
-                .collect();
-
-            if header_parts.len() != 2 {
-                return Err(Error::InvalidPatchFormat(format!(
-                    "Invalid chunk header format: {}",
-                    chunk_header
-                )));
-            }
-
-            let old_range = header_parts[0].strip_prefix('-').unwrap_or(header_parts[0]);
-            let new_range = header_parts[1].strip_prefix('+').unwrap_or(header_parts[1]);
-
-            let old_range_parts: Vec<&str> = old_range.split(',').collect();
-            let new_range_parts: Vec<&str> = new_range.split(',').collect();
-
-            if old_range_parts.len() != 2 || new_range_parts.len() != 2 {
-                return Err(Error::InvalidPatchFormat(format!(
-                    "Invalid range format in chunk header: {}",
-                    chunk_header
-                )));
-            }
-
-            let old_start = old_range_parts[0].parse::<usize>().map_err(|_| {
-                Error::InvalidPatchFormat(format!(
-                    "Invalid old start number: {}",
-                    old_range_parts[0]
-                ))
-            })?;
-            let old_lines = old_range_parts[1].parse::<usize>().map_err(|_| {
-                Error::InvalidPatchFormat(format!(
-                    "Invalid old lines number: {}",
-                    old_range_parts[1]
-                ))
-            })?;
-            let new_start = new_range_parts[0].parse::<usize>().map_err(|_| {
-                Error::InvalidPatchFormat(format!(
-                    "Invalid new start number: {}",
-                    new_range_parts[0]
-                ))
-            })?;
-            let new_lines = new_range_parts[1].parse::<usize>().map_err(|_| {
-                Error::InvalidPatchFormat(format!(
-                    "Invalid new lines number: {}",
-                    new_range_parts[1]
-                ))
-            })?;
-
-            // Adjust to 0-based indexing
-            let old_start = old_start.saturating_sub(1);
-            let new_start = new_start.saturating_sub(1);
+            // Extract the line numbers from the chunk header using a more flexible approach
+            let (old_start, old_lines, new_start, new_lines) = parse_chunk_header(chunk_header)?;
 
             i += 1; // Move past the chunk header
 
@@ -192,10 +135,15 @@ impl Patch {
                     remaining_old_lines = remaining_old_lines.saturating_sub(1);
                     remaining_new_lines = remaining_new_lines.saturating_sub(1);
                 } else {
-                    return Err(Error::InvalidPatchFormat(format!(
-                        "Invalid operation line: {}",
+                    // Try to handle malformed patches more gracefully - assume it's context if it doesn't have a prefix
+                    let content = line;
+                    operations.push(Operation::Context(content.to_string()));
+                    remaining_old_lines = remaining_old_lines.saturating_sub(1);
+                    remaining_new_lines = remaining_new_lines.saturating_sub(1);
+                    println!(
+                        "Warning: Line without proper prefix treated as context: '{}'",
                         line
-                    )));
+                    );
                 }
 
                 i += 1;
@@ -217,6 +165,122 @@ impl Patch {
             chunks,
         })
     }
+}
+
+/// Parse a chunk header with more flexibility to handle various Git diff formats
+/// Returns (old_start, old_lines, new_start, new_lines)
+fn parse_chunk_header(header: &str) -> Result<(usize, usize, usize, usize), Error> {
+    // Find the positions of the @@ markers
+    let start_pos = header.find("@@ ").unwrap_or(0) + 3; // Skip past the opening @@
+    let end_pos = header[start_pos..]
+        .find(" @@")
+        .map(|pos| start_pos + pos)
+        .unwrap_or_else(|| {
+            // If we can't find closing @@, check for @@ followed by context
+            header[start_pos..]
+                .find(" @@ ")
+                .map(|pos| start_pos + pos)
+                .unwrap_or(header.len())
+        });
+
+    let header_content = &header[start_pos..end_pos];
+
+    // Extract the line numbers from the chunk header
+    // Format: -old_start,old_lines +new_start,new_lines
+    let parts: Vec<&str> = header_content.split_whitespace().collect();
+
+    // Handle different header formats more flexibly
+    let (old_part, new_part) = match parts.len() {
+        2 => (parts[0], parts[1]),
+        // Handle combined diff format or other variations
+        _ => {
+            let mut old_part = None;
+            let mut new_part = None;
+
+            for part in parts {
+                if part.starts_with('-') {
+                    old_part = Some(part);
+                } else if part.starts_with('+') {
+                    new_part = Some(part);
+                }
+            }
+
+            (
+                old_part.ok_or_else(|| {
+                    Error::InvalidPatchFormat(format!(
+                        "Missing old range in chunk header: {}",
+                        header
+                    ))
+                })?,
+                new_part.ok_or_else(|| {
+                    Error::InvalidPatchFormat(format!(
+                        "Missing new range in chunk header: {}",
+                        header
+                    ))
+                })?,
+            )
+        }
+    };
+
+    // Parse the old range
+    let old_range = old_part.strip_prefix('-').unwrap_or(old_part);
+    let old_range_parts: Vec<&str> = old_range.split(',').collect();
+
+    let (old_start, old_lines) = match old_range_parts.len() {
+        1 => {
+            // If only one number, assume it's just the start line with 1 line of context
+            let start = parse_number(old_range_parts[0], "old start")?;
+            (start, 1)
+        }
+        2 => {
+            let start = parse_number(old_range_parts[0], "old start")?;
+            let lines = parse_number(old_range_parts[1], "old lines")?;
+            (start, lines)
+        }
+        _ => {
+            return Err(Error::InvalidPatchFormat(format!(
+                "Invalid old range format: {}",
+                old_range
+            )))
+        }
+    };
+
+    // Parse the new range
+    let new_range = new_part.strip_prefix('+').unwrap_or(new_part);
+    let new_range_parts: Vec<&str> = new_range.split(',').collect();
+
+    let (new_start, new_lines) = match new_range_parts.len() {
+        1 => {
+            // If only one number, assume it's just the start line with 1 line of context
+            let start = parse_number(new_range_parts[0], "new start")?;
+            (start, 1)
+        }
+        2 => {
+            let start = parse_number(new_range_parts[0], "new start")?;
+            let lines = parse_number(new_range_parts[1], "new lines")?;
+            (start, lines)
+        }
+        _ => {
+            return Err(Error::InvalidPatchFormat(format!(
+                "Invalid new range format: {}",
+                new_range
+            )))
+        }
+    };
+
+    // Adjust to 0-based indexing
+    Ok((
+        old_start.saturating_sub(1),
+        old_lines,
+        new_start.saturating_sub(1),
+        new_lines,
+    ))
+}
+
+/// Parse a number from a string with better error handling
+fn parse_number(s: &str, field_name: &str) -> Result<usize, Error> {
+    s.parse::<usize>()
+        .map_err(|_| Error::InvalidPatchFormat(format!("Invalid {} number: {}", field_name, s)))
 }
 
 impl fmt::Display for Patch {
@@ -276,5 +340,92 @@ diff -u a/file.txt b/file.txt
         assert!(matches!(chunk.operations[2], Operation::Add(_)));
         assert!(matches!(chunk.operations[3], Operation::Context(_)));
         assert!(matches!(chunk.operations[4], Operation::Context(_)));
+    }
+
+    #[test]
+    fn test_parse_patch_with_extra_lines() {
+        // This test verifies that we can handle extra lines in the patch
+        // like git index lines and empty lines
+        let patch_str = "--- a/file.txt\n+++ b/file.txt\n\n@@ -1,4 +1,4 @@\n line1\n-line2\n+line2 modified\n line3\n line4\n";
+
+        match Patch::parse(patch_str) {
+            Ok(patch) => {
+                assert_eq!(patch.chunks.len(), 1);
+
+                let chunk = &patch.chunks[0];
+                assert_eq!(chunk.old_start, 0);
+                assert_eq!(chunk.old_lines, 4);
+                assert_eq!(chunk.new_start, 0);
+                assert_eq!(chunk.new_lines, 4);
+            }
+            Err(e) => {
+                panic!("Failed to parse patch: {}", e);
+            }
+        }
+
+        // Test a different variant with preamble
+        let patch_str2 = "diff --git a/file.txt b/file.txt\n--- a/file.txt\n+++ b/file.txt\n@@ -1,4 +1,4 @@\n line1\n-line2\n+line2 modified\n line3\n line4\n";
+
+        let patch2 = Patch::parse(patch_str2).unwrap();
+        assert_eq!(
+            patch2.preemble,
+            Some("diff --git a/file.txt b/file.txt".to_string())
+        );
+    }
+
+    #[test]
+    fn test_parse_patch_simple_header() {
+        let patch_str = "\
+--- a/file.txt
++++ b/file.txt
+@@ -1 +1 @@
+-old content
++new content
+";
+
+        let patch = Patch::parse(patch_str).unwrap();
+        assert_eq!(patch.chunks.len(), 1);
+
+        let chunk = &patch.chunks[0];
+        assert_eq!(chunk.old_start, 0);
+        assert_eq!(chunk.old_lines, 1);
+        assert_eq!(chunk.new_start, 0);
+        assert_eq!(chunk.new_lines, 1);
+
+        assert_eq!(chunk.operations.len(), 2);
+        if let Operation::Remove(line) = &chunk.operations[0] {
+            assert_eq!(line, "old content");
+        } else {
+            panic!("Expected Remove operation");
+        }
+
+        if let Operation::Add(line) = &chunk.operations[1] {
+            assert_eq!(line, "new content");
+        } else {
+            panic!("Expected Add operation");
+        }
+    }
+
+    #[test]
+    fn test_parse_patch_with_context() {
+        let patch_str = "\
+--- a/file.txt
++++ b/file.txt
+@@ -10,6 +10,7 @@ context line before
+ another context line
+-removed line
++added line 1
++added line 2
+ final context line
+";
+
+        let patch = Patch::parse(patch_str).unwrap();
+        assert_eq!(patch.chunks.len(), 1);
+
+        let chunk = &patch.chunks[0];
+        assert_eq!(chunk.old_start, 9);
+        assert_eq!(chunk.old_lines, 6);
+        assert_eq!(chunk.new_start, 9);
+        assert_eq!(chunk.new_lines, 7);
     }
 }
