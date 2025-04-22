@@ -97,9 +97,9 @@ fn find_next_block(
             _ => {
                 // Delete or Insert encountered
                 // If the preceding gap of Equal changes was large enough, end the block before it.
-                if consecutive_equals > merge_threshold {
+                if consecutive_equals >= merge_threshold {
                     // Use > not >= to keep context for both sides
-                    block_end_idx -= consecutive_equals; // Adjust end index to before the gap
+                    block_end_idx = block_end_idx.saturating_sub(consecutive_equals);
                     break;
                 }
                 consecutive_equals = 0; // Reset gap counter as we found a non-equal change
@@ -108,8 +108,8 @@ fn find_next_block(
         block_end_idx += 1;
 
         // Special case: If we reached the end and the last changes were Equal, check the gap count.
-        if block_end_idx == changes.len() && consecutive_equals > merge_threshold {
-            block_end_idx -= consecutive_equals; // Adjust end index if trailing equals exceed threshold
+        if block_end_idx == changes.len() && consecutive_equals >= merge_threshold {
+            block_end_idx = block_end_idx.saturating_sub(consecutive_equals);
         }
     }
 
@@ -325,5 +325,444 @@ pub fn create_patch(chunks: Vec<Chunk>) -> Patch {
         old_file: "original".to_string(),
         new_file: "modified".to_string(),
         chunks,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{Chunk, Operation, Patch};
+
+    #[test]
+    fn test_handle_empty_files_add_to_empty() {
+        let old_lines: Vec<&str> = vec![];
+        let new_lines = vec!["a", "b"];
+        let expected_patch = Patch {
+            preamble: None,
+            old_file: "original".to_string(),
+            new_file: "modified".to_string(),
+            chunks: vec![Chunk {
+                old_start: 0,
+                old_lines: 0,
+                new_start: 0,
+                new_lines: 2,
+                operations: vec![
+                    Operation::Add("a".to_string()),
+                    Operation::Add("b".to_string()),
+                ],
+            }],
+        };
+        assert_eq!(
+            handle_empty_files(&old_lines, &new_lines),
+            Some(expected_patch)
+        );
+    }
+
+    #[test]
+    fn test_handle_empty_files_remove_all() {
+        let old_lines = vec!["a", "b"];
+        let new_lines: Vec<&str> = vec![];
+        let expected_patch = Patch {
+            preamble: None,
+            old_file: "original".to_string(),
+            new_file: "modified".to_string(),
+            chunks: vec![Chunk {
+                old_start: 0,
+                old_lines: 2,
+                new_start: 0,
+                new_lines: 0,
+                operations: vec![
+                    Operation::Remove("a".to_string()),
+                    Operation::Remove("b".to_string()),
+                ],
+            }],
+        };
+        assert_eq!(
+            handle_empty_files(&old_lines, &new_lines),
+            Some(expected_patch)
+        );
+    }
+
+    #[test]
+    fn test_handle_empty_files_both_empty() {
+        let old_lines: Vec<&str> = vec![];
+        let new_lines: Vec<&str> = vec![];
+        let expected_patch = Patch {
+            preamble: None,
+            old_file: "original".to_string(),
+            new_file: "modified".to_string(),
+            chunks: Vec::new(),
+        };
+        assert_eq!(
+            handle_empty_files(&old_lines, &new_lines),
+            Some(expected_patch)
+        );
+    }
+
+    #[test]
+    fn test_handle_empty_files_no_change() {
+        let old_lines = vec!["a"];
+        let new_lines = vec!["a"];
+        assert_eq!(handle_empty_files(&old_lines, &new_lines), None);
+    }
+
+    // --- Tests for process_changes_to_chunks ---
+
+    #[test]
+    fn test_process_chunks_basic_insert() {
+        let old_lines = vec!["a", "b"];
+        let new_lines = vec!["a", "x", "y", "b"];
+        let changes = vec![
+            Change::Equal(0, 0),  // a
+            Change::Insert(1, 2), // x, y
+            Change::Equal(1, 3),  // b
+        ];
+        let context_lines = 1;
+        let chunks = process_changes_to_chunks(&changes, &old_lines, &new_lines, context_lines);
+
+        assert_eq!(chunks.len(), 1);
+        let chunk = &chunks[0];
+        assert_eq!(chunk.old_start, 0);
+        assert_eq!(chunk.new_start, 0);
+        assert_eq!(chunk.old_lines, 2);
+        assert_eq!(chunk.new_lines, 4);
+        assert_eq!(
+            chunk.operations,
+            vec![
+                Operation::Context("a".to_string()),
+                Operation::Add("x".to_string()),
+                Operation::Add("y".to_string()),
+                Operation::Context("b".to_string()),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_process_chunks_basic_delete() {
+        let old_lines = vec!["a", "x", "y", "b"];
+        let new_lines = vec!["a", "b"];
+        let changes = vec![
+            Change::Equal(0, 0),  // a
+            Change::Delete(1, 2), // x, y
+            Change::Equal(3, 1),  // b
+        ];
+        let context_lines = 1;
+        let chunks = process_changes_to_chunks(&changes, &old_lines, &new_lines, context_lines);
+
+        assert_eq!(chunks.len(), 1);
+        let chunk = &chunks[0];
+        assert_eq!(chunk.old_start, 0);
+        assert_eq!(chunk.new_start, 0);
+        assert_eq!(chunk.old_lines, 4);
+        assert_eq!(chunk.new_lines, 2);
+        assert_eq!(
+            chunk.operations,
+            vec![
+                Operation::Context("a".to_string()),
+                Operation::Remove("x".to_string()),
+                Operation::Remove("y".to_string()),
+                Operation::Context("b".to_string()),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_process_chunks_basic_replace() {
+        let old_lines = vec!["a", "b", "c"];
+        let new_lines = vec!["a", "x", "c"];
+        let changes = vec![
+            Change::Equal(0, 0),  // a
+            Change::Delete(1, 1), // b
+            Change::Insert(1, 1), // x
+            Change::Equal(2, 2),  // c
+        ];
+        let context_lines = 1;
+        let chunks = process_changes_to_chunks(&changes, &old_lines, &new_lines, context_lines);
+
+        assert_eq!(chunks.len(), 1);
+        let chunk = &chunks[0];
+        assert_eq!(chunk.old_start, 0);
+        assert_eq!(chunk.new_start, 0);
+        assert_eq!(chunk.old_lines, 3);
+        assert_eq!(chunk.new_lines, 3);
+        assert_eq!(
+            chunk.operations,
+            vec![
+                Operation::Context("a".to_string()),
+                Operation::Remove("b".to_string()),
+                Operation::Add("x".to_string()),
+                Operation::Context("c".to_string()),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_process_chunks_multiple_blocks() {
+        let old_lines = vec!["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"]; // 10
+        let new_lines = vec!["a", "X", "c", "d", "e", "f", "g", "Y", "i", "j"]; // 10
+        let changes = vec![
+            Change::Equal(0, 0),  // a
+            Change::Delete(1, 1), // b
+            Change::Insert(1, 1), // X
+            Change::Equal(2, 2),  // c
+            Change::Equal(3, 3),  // d
+            Change::Equal(4, 4),  // e (context=1, merge_threshold=2 -> need >2 equals to split)
+            Change::Equal(5, 5),  // f
+            Change::Equal(6, 6),  // g
+            Change::Delete(7, 1), // h
+            Change::Insert(7, 1), // Y
+            Change::Equal(8, 8),  // i
+            Change::Equal(9, 9),  // j
+        ];
+        let context_lines = 1;
+        let chunks = process_changes_to_chunks(&changes, &old_lines, &new_lines, context_lines);
+
+        // With context=1, the 4 Equal changes (c,d,e,f) > context*2 (2), so it should split
+        assert_eq!(chunks.len(), 2);
+
+        // Chunk 1: Replace b with X
+        let chunk1 = &chunks[0];
+        assert_eq!(chunk1.old_start, 0);
+        assert_eq!(chunk1.new_start, 0);
+        assert_eq!(chunk1.old_lines, 3); // a, b, c
+        assert_eq!(chunk1.new_lines, 3); // a, X, c
+        assert_eq!(
+            chunk1.operations,
+            vec![
+                Operation::Context("a".to_string()),
+                Operation::Remove("b".to_string()),
+                Operation::Add("X".to_string()),
+                Operation::Context("c".to_string()), // Trailing context
+            ]
+        );
+
+        // Chunk 2: Replace h with Y
+        let chunk2 = &chunks[1];
+        assert_eq!(chunk2.old_start, 6); // Starts at g (context)
+        assert_eq!(chunk2.new_start, 6); // Starts at g (context)
+        assert_eq!(chunk2.old_lines, 4); // g, h, i, j
+        assert_eq!(chunk2.new_lines, 4); // g, Y, i, j
+        assert_eq!(
+            chunk2.operations,
+            vec![
+                Operation::Context("g".to_string()), // Leading context
+                Operation::Remove("h".to_string()),
+                Operation::Add("Y".to_string()),
+                Operation::Context("i".to_string()),
+                Operation::Context("j".to_string()), // Trailing context
+            ]
+        );
+    }
+
+    #[test]
+    fn test_process_chunks_zero_context() {
+        let old_lines = vec!["a", "b", "c"];
+        let new_lines = vec!["a", "x", "c"];
+        let changes = vec![
+            Change::Equal(0, 0),  // a
+            Change::Delete(1, 1), // b
+            Change::Insert(1, 1), // x
+            Change::Equal(2, 2),  // c
+        ];
+        let context_lines = 0;
+        let chunks = process_changes_to_chunks(&changes, &old_lines, &new_lines, context_lines);
+
+        assert_eq!(chunks.len(), 1);
+        let chunk = &chunks[0];
+        assert_eq!(chunk.old_start, 1); // Starts at b (no context)
+        assert_eq!(chunk.new_start, 1); // Starts at x (no context)
+        assert_eq!(chunk.old_lines, 1); // b
+        assert_eq!(chunk.new_lines, 1); // x
+        assert_eq!(
+            chunk.operations,
+            vec![
+                Operation::Remove("b".to_string()),
+                Operation::Add("x".to_string()),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_process_chunks_context_at_ends() {
+        let old_lines = vec!["a", "b", "c", "d", "e"];
+        let new_lines = vec!["x", "b", "c", "d", "y"];
+        let changes = vec![
+            Change::Delete(0, 1), // a
+            Change::Insert(0, 1), // x
+            Change::Equal(1, 1),  // b (context=1)
+            Change::Equal(2, 2),  // c
+            Change::Equal(3, 3),  // d (context=1)
+            Change::Delete(4, 1), // e
+            Change::Insert(4, 1), // y
+        ];
+        let context_lines = 1;
+        let chunks = process_changes_to_chunks(&changes, &old_lines, &new_lines, context_lines);
+
+        assert_eq!(chunks.len(), 2);
+
+        // Chunk 1: Replace a with x
+        let chunk1 = &chunks[0];
+        assert_eq!(chunk1.old_start, 0); // Starts at a
+        assert_eq!(chunk1.new_start, 0); // Starts at x
+        assert_eq!(chunk1.old_lines, 2); // a, b
+        assert_eq!(chunk1.new_lines, 2); // x, b
+        assert_eq!(
+            chunk1.operations,
+            vec![
+                Operation::Remove("a".to_string()),
+                Operation::Add("x".to_string()),
+                Operation::Context("b".to_string()), // Trailing context
+            ]
+        );
+
+        // Chunk 2: Replace e with y
+        let chunk2 = &chunks[1];
+        assert_eq!(chunk2.old_start, 3); // Starts at d (context)
+        assert_eq!(chunk2.new_start, 3); // Starts at d (context)
+        assert_eq!(chunk2.old_lines, 2); // d, e
+        assert_eq!(chunk2.new_lines, 2); // d, y
+        assert_eq!(
+            chunk2.operations,
+            vec![
+                Operation::Context("d".to_string()), // Leading context
+                Operation::Remove("e".to_string()),
+                Operation::Add("y".to_string()),
+            ]
+        );
+    }
+
+    // --- Tests for find_next_block ---
+
+    #[test]
+    fn test_find_next_block_all_equal() {
+        let changes = vec![Change::Equal(0, 0), Change::Equal(1, 1)];
+        assert_eq!(find_next_block(&changes, 0, 1), None);
+    }
+
+    #[test]
+    fn test_find_next_block_single_block_start() {
+        let changes = vec![
+            Change::Delete(0, 1),
+            Change::Equal(1, 0),
+            Change::Equal(2, 1),
+        ];
+        // Block starts at 0 (Delete). Encounters 2 Equals. Threshold is 1*2=2.
+        // Since 2 is not > 2, the equals are merged.
+        assert_eq!(find_next_block(&changes, 0, 1), Some((0, 3))); // Corrected assertion
+    }
+
+    #[test]
+    fn test_find_next_block_single_block_middle() {
+        let changes = vec![
+            Change::Equal(0, 0),
+            Change::Insert(1, 1),
+            Change::Equal(1, 2),
+        ];
+        assert_eq!(find_next_block(&changes, 0, 1), Some((1, 3))); // Corrected end index
+        assert_eq!(find_next_block(&changes, 3, 1), None); // Corrected start scan index
+    }
+
+    #[test]
+    fn test_find_next_block_merges_small_gap() {
+        let changes = vec![
+            Change::Delete(0, 1),
+            Change::Equal(1, 0), // 1 equal change, context=1, merge_threshold=2. 1 <= 2, so merge
+            Change::Insert(1, 1),
+            Change::Equal(2, 2),
+        ];
+        assert_eq!(find_next_block(&changes, 0, 1), Some((0, 4))); // Corrected end index
+    }
+
+    #[test]
+    fn test_find_next_block_splits_large_gap() {
+        let changes = vec![
+            Change::Delete(0, 1),
+            Change::Equal(1, 0),
+            Change::Equal(2, 1),
+            Change::Equal(3, 2), // 3 equal changes, context=1, merge_threshold=2. 3 > 2, so split
+            Change::Insert(4, 1),
+        ];
+        assert_eq!(find_next_block(&changes, 0, 1), Some((0, 1))); // First block
+        assert_eq!(find_next_block(&changes, 1, 1), Some((4, 5))); // Second block (scan starts after first block)
+    }
+
+    #[test]
+    fn test_find_next_block_trailing_equals_split() {
+        let changes = vec![
+            Change::Delete(0, 1),
+            Change::Equal(1, 0),
+            Change::Equal(2, 1),
+            Change::Equal(3, 2), // 3 trailing equals > merge_threshold=2
+        ];
+        assert_eq!(find_next_block(&changes, 0, 1), Some((0, 1))); // Block ends before trailing equals
+    }
+
+    #[test]
+    fn test_find_next_block_trailing_equals_merge() {
+        let changes = vec![
+            Change::Delete(0, 1),
+            Change::Equal(1, 0), // 1 trailing equal <= merge_threshold=2
+        ];
+        assert_eq!(find_next_block(&changes, 0, 1), Some((0, 2))); // Block includes trailing equal
+    }
+
+    // --- Tests for determine_chunk_start_indices ---
+
+    #[test]
+    fn test_determine_start_indices_with_context() {
+        let changes = vec![
+            Change::Equal(5, 5), // context_start_idx = 0
+            Change::Equal(6, 6),
+            Change::Delete(7, 1), // block_start_idx = 2
+        ];
+        assert_eq!(determine_chunk_start_indices(&changes, 0, 2), (5, 5));
+    }
+
+    #[test]
+    fn test_determine_start_indices_no_context_equal_start() {
+        let changes = vec![
+            Change::Equal(7, 7), // block_start_idx = 0
+            Change::Delete(8, 1),
+        ];
+        // context_start_idx = block_start_idx = 0
+        assert_eq!(determine_chunk_start_indices(&changes, 0, 0), (7, 7));
+    }
+
+    #[test]
+    fn test_determine_start_indices_no_context_delete_start() {
+        let changes = vec![
+            Change::Equal(5, 5),  // Change before block
+            Change::Delete(6, 1), // block_start_idx = 1
+        ];
+        // context_start_idx = block_start_idx = 1
+        assert_eq!(determine_chunk_start_indices(&changes, 1, 1), (6, 6)); // Infers new index from previous Equal
+    }
+
+    #[test]
+    fn test_determine_start_indices_no_context_insert_start() {
+        let changes = vec![
+            Change::Equal(5, 5),  // Change before block
+            Change::Insert(6, 1), // block_start_idx = 1
+        ];
+        // context_start_idx = block_start_idx = 1
+        assert_eq!(determine_chunk_start_indices(&changes, 1, 1), (6, 6)); // Infers old index from previous Equal
+    }
+
+    #[test]
+    fn test_determine_start_indices_no_context_delete_start_at_file_start() {
+        let changes = vec![
+            Change::Delete(0, 1), // block_start_idx = 0
+        ];
+        // context_start_idx = block_start_idx = 0
+        assert_eq!(determine_chunk_start_indices(&changes, 0, 0), (0, 0)); // Infers 0 for new index
+    }
+
+    #[test]
+    fn test_determine_start_indices_no_context_insert_start_at_file_start() {
+        let changes = vec![
+            Change::Insert(0, 1), // block_start_idx = 0
+        ];
+        // context_start_idx = block_start_idx = 0
+        assert_eq!(determine_chunk_start_indices(&changes, 0, 0), (0, 0)); // Infers 0 for old index
     }
 }
