@@ -113,7 +113,7 @@ impl DiffAlgorithm for MyersDiffer<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Patcher;
+    use crate::{test_utils::load_fixture, Patcher};
 
     #[test]
     fn test_simple_myers_diff() {
@@ -194,6 +194,29 @@ mod tests {
         let myers = MyersDiffer::new(&differ);
         let patch = myers.generate();
         let result = Patcher::new(patch).apply(old, false).unwrap();
+        assert_eq!(result, new);
+    }
+
+    // New tests using fixtures
+    #[test]
+    fn test_myers_fixture_simple() {
+        let old = load_fixture("simple_before.rs");
+        let new = load_fixture("simple_after.rs");
+        let differ = Differ::new(&old, &new); // Myers is default
+        let myers = MyersDiffer::new(&differ);
+        let patch = myers.generate();
+        let result = Patcher::new(patch).apply(&old, false).unwrap();
+        assert_eq!(result, new);
+    }
+
+    #[test]
+    fn test_myers_fixture_complex() {
+        let old = load_fixture("complex_before.rs");
+        let new = load_fixture("complex_after.rs");
+        let differ = Differ::new(&old, &new); // Myers is default
+        let myers = MyersDiffer::new(&differ);
+        let patch = myers.generate();
+        let result = Patcher::new(patch).apply(&old, false).unwrap();
         assert_eq!(result, new);
     }
 }

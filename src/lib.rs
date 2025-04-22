@@ -41,6 +41,13 @@ pub enum Error {
 }
 
 #[cfg(test)]
+mod test_utils {
+    pub(crate) fn load_fixture(name: &str) -> String {
+        let path = format!("fixtures/code/{}", name);
+        std::fs::read_to_string(path).unwrap()
+    }
+}
+#[cfg(test)]
 mod tests {
     // Bring necessary items into scope for the test
     use super::{Differ, Error, Patcher};

@@ -673,7 +673,7 @@ impl DiffAlgorithm for XDiffDiffer<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{differ::DiffAlgorithmType, Patcher};
+    use crate::{differ::DiffAlgorithmType, test_utils::load_fixture, Patcher};
 
     // Keeping existing tests - they should still pass if the algorithm is correct,
     // though the exact chunking might differ slightly from the previous LCS impl.
@@ -795,6 +795,29 @@ mod tests {
         let patch = differ.generate();
         assert_eq!(patch.chunks.len(), 1);
         let result = Patcher::new(patch).apply(old, false).unwrap();
+        assert_eq!(result, new);
+    }
+
+    // New tests using fixtures
+    #[test]
+    fn test_xdiff_fixture_simple() {
+        let old = load_fixture("simple_before.rs");
+        let new = load_fixture("simple_after.rs");
+        let differ = Differ::new_with_algorithm(&old, &new, DiffAlgorithmType::XDiff);
+        let xdiff = XDiffDiffer::new(&differ);
+        let patch = xdiff.generate();
+        let result = Patcher::new(patch).apply(&old, false).unwrap();
+        assert_eq!(result, new);
+    }
+
+    #[test]
+    fn test_xdiff_fixture_complex() {
+        let old = load_fixture("complex_before.rs");
+        let new = load_fixture("complex_after.rs");
+        let differ = Differ::new_with_algorithm(&old, &new, DiffAlgorithmType::XDiff);
+        let xdiff = XDiffDiffer::new(&differ);
+        let patch = xdiff.generate();
+        let result = Patcher::new(patch).apply(&old, false).unwrap();
         assert_eq!(result, new);
     }
 }
