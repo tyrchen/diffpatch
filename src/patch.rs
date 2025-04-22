@@ -91,22 +91,31 @@ impl Patch {
 
         while i < lines.len() {
             let chunk_header = lines[i];
-            if !chunk_header.starts_with("@@ ") || !chunk_header.ends_with(" @@") {
+            if !chunk_header.starts_with("@@ ") {
                 return Err(Error::InvalidPatchFormat(format!(
                     "Invalid chunk header: {}",
                     chunk_header
                 )));
             }
 
+            // Find the positions of the @@ markers
+            let start_pos = chunk_header.find("@@ ").unwrap_or(0) + 3; // Skip past the opening @@
+            let end_pos = chunk_header[start_pos..]
+                .find(" @@")
+                .map(|pos| start_pos + pos)
+                .unwrap_or_else(|| {
+                    // If we can't find closing @@, check for @@ followed by context
+                    chunk_header[start_pos..]
+                        .find(" @@ ")
+                        .map(|pos| start_pos + pos)
+                        .unwrap_or(chunk_header.len())
+                });
+
+            let header_content = &chunk_header[start_pos..end_pos];
+
             // Extract the line numbers from the chunk header
-            // Format: @@ -old_start,old_lines +new_start,new_lines @@
-            let header_parts: Vec<&str> = chunk_header
-                .strip_prefix("@@ ")
-                .unwrap_or(chunk_header)
-                .strip_suffix(" @@")
-                .unwrap_or(chunk_header)
-                .split(' ')
-                .collect();
+            // Format: -old_start,old_lines +new_start,new_lines
+            let header_parts: Vec<&str> = header_content.split(' ').collect();
 
             if header_parts.len() != 2 {
                 return Err(Error::InvalidPatchFormat(format!(

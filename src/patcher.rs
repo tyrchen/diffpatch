@@ -38,9 +38,16 @@ impl Patcher {
                     Operation::Context(line) => {
                         // Context lines should match the content
                         if current_line >= lines.len() || lines[current_line] != line {
+                            let actual = if current_line < lines.len() {
+                                format!("'{}'", lines[current_line])
+                            } else {
+                                "EOF".to_string()
+                            };
                             return Err(Error::ApplyError(format!(
-                                "Context mismatch at line {}",
-                                current_line + 1
+                                "Context mismatch at line {}. Expected '{}', got {}",
+                                current_line + 1,
+                                line,
+                                actual
                             )));
                         }
                         result.push(line);
