@@ -283,6 +283,30 @@ diff --git a/src/test.txt b/src/test.txt
 }
 
 #[test]
+fn test_diff_test3() {
+    // Set up a git checkout with the diff-test3 tag
+    let (_temp_dir, temp_path) = setup_git_checkout("diff-test3");
+
+    // Get the path to the patch file
+    let patch_path = fixtures_path().join("diff-test3.diff");
+
+    // Define the files to check after patching
+    let files_to_check = [
+        (
+            "README.md",
+            "- `MultifilePatch`: Collection of patches for multiple files \
+- `MultifilePatcher`: Applies multiple patches to files",
+        ),
+        ("src/lib.rs", "MultifilePatch"),
+        ("examples/multifile.rs", "Multi-File Patch Example"),
+        ("examples/.gitignore", "tmp"),
+    ];
+
+    // Apply the patch and verify the results, ignoring errors due to context mismatches
+    apply_and_verify_patch(patch_path, &temp_path, &files_to_check, true);
+}
+
+#[test]
 fn test_apply_multifile_git_diff() {
     // Create a temporary directory for our test
     let temp_dir = TempDir::new().unwrap();
