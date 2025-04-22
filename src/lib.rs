@@ -1,9 +1,12 @@
 use thiserror::Error;
 
-mod differ;
+pub mod differ;
 mod multipatch;
 mod patch;
 mod patcher;
+
+// Re-export the differ implementations for convenience
+pub use differ::{DiffAlgorithm, Differ, MyersDiffer, NaiveDiffer};
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -52,13 +55,6 @@ pub struct Patch {
     pub new_file: String,
     /// Chunks of changes
     pub chunks: Vec<Chunk>,
-}
-
-/// The Differ struct is used to generate a patch between old and new content
-pub struct Differ {
-    old: String,
-    new: String,
-    context_lines: usize,
 }
 
 /// The Patcher struct is used to apply a patch to content
@@ -112,29 +108,6 @@ pub struct Chunk {
     pub new_lines: usize,
     /// The operations in this chunk
     pub operations: Vec<Operation>,
-}
-
-/// Myers diff algorithm. Creates a diff between two sequences
-/// using the efficient Myers algorithm. The provided diff callback
-/// will be called for each operation (equal, insert, delete).
-pub fn myers_diff<S, T, D>(
-    d: &mut D,
-    a: &S,
-    a0: usize,
-    a1: usize,
-    b: &T,
-    b0: usize,
-    b1: usize,
-) -> Result<(), D::Error>
-where
-    S: std::ops::Index<usize> + ?Sized,
-    T: std::ops::Index<usize> + ?Sized,
-    T::Output: PartialEq<S::Output>,
-    D: Diff,
-{
-    // Implement the Myers diff algorithm to find shortest edit path
-    // This uses the algorithm from the provided code example
-    differ::diff(d, a, a0, a1, b, b0, b1)
 }
 
 #[cfg(test)]
