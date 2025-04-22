@@ -1,6 +1,6 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use diffpatch::{Differ, Patch, Patcher};
+use diffpatch::{Differ, MultifilePatch, MultifilePatcher, Patch, Patcher};
 
 use std::fs;
 use std::path::PathBuf;
@@ -46,6 +46,21 @@ enum Commands {
         /// The output file (defaults to stdout if not provided)
         #[arg(short, long)]
         output: Option<PathBuf>,
+
+        /// Reverse the patch
+        #[arg(short, long, default_value_t = false)]
+        reverse: bool,
+    },
+
+    /// Apply a multi-file patch
+    ApplyMulti {
+        /// The patch file to apply
+        #[arg(short, long)]
+        patch: PathBuf,
+
+        /// The directory to apply patches in (defaults to current directory)
+        #[arg(short, long)]
+        directory: Option<PathBuf>,
 
         /// Reverse the patch
         #[arg(short, long, default_value_t = false)]
@@ -109,6 +124,36 @@ fn main() -> Result<()> {
             match output {
                 Some(path) => fs::write(path, result)?,
                 None => println!("{}", result),
+            }
+        }
+
+        Commands::ApplyMulti {
+            patch: patch_path,
+            directory,
+            reverse,
+        } => {
+            // Change to the specified directory if provided
+            let original_dir = if let Some(dir) = directory {
+                let current_dir = std::env::current_dir()?;
+                std::env::set_current_dir(&dir)?;
+                Some(current_dir)
+            } else {
+                None
+            };
+
+            // Parse and apply the multifile patch
+            let multifile_patch = MultifilePatch::parse_from_file(patch_path)?;
+            let patcher = MultifilePatcher::new(multifile_patch);
+            let written_files = patcher.apply_and_write(reverse)?;
+
+            println!("Successfully updated {} files:", written_files.len());
+            for file in written_files {
+                println!("  {}", file);
+            }
+
+            // Change back to the original directory if we changed it
+            if let Some(dir) = original_dir {
+                std::env::set_current_dir(dir)?;
             }
         }
     }

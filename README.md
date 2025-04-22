@@ -9,6 +9,7 @@ A Rust library for generating and applying Git-style unified diff patches.
 - Generate patches from original and modified content
 - Apply patches to content, both forward and in reverse
 - Parse patches from text format
+- Support for multi-file patches
 - Command-line interface for generating and applying patches
 
 ## Installation
@@ -90,6 +91,25 @@ fn main() {
 }
 ```
 
+### Working with Multi-file Patches
+
+```rust
+use diffpatch::{MultifilePatch, MultifilePatcher};
+use std::path::Path;
+
+fn main() {
+    // Parse a multi-file patch from a file
+    let patch_path = Path::new("changes.patch");
+    let multipatch = MultifilePatch::parse_from_file(patch_path).unwrap();
+
+    // Apply all patches to files in the current directory
+    let patcher = MultifilePatcher::new(multipatch);
+    let written_files = patcher.apply_and_write(false).unwrap();
+
+    println!("Updated files: {:?}", written_files);
+}
+```
+
 ## CLI Usage
 
 ### Generate a Patch
@@ -110,12 +130,19 @@ diffpatch-cli apply --patch patch.diff --file original_file.txt --output result.
 diffpatch-cli apply --patch patch.diff --file modified_file.txt --output original.txt --reverse
 ```
 
+### Apply a Multi-file Patch
+
+```bash
+diffpatch-cli apply-multi --patch changes.patch [--directory /path/to/target] [--reverse]
+```
+
 ## Data Structures
 
-- `Diff`: Represents a complete diff between two files
-- `Hunk`: Represents a contiguous section of changes
-- `DiffLine`: Represents a single line in a diff (addition, deletion, or context)
-- `LineType`: Enum for the type of change a line represents
+- `Patch`: Represents a complete diff between two files
+- `Chunk`: Represents a contiguous section of changes
+- `Operation`: Represents a single line in a diff (addition, deletion, or context)
+- `MultifilePatch`: Collection of patches for multiple files
+- `MultifilePatcher`: Applies multiple patches to files
 
 ## Limitations
 
