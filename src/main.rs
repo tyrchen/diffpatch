@@ -1,6 +1,6 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use diffpatch::{Differ, MultifilePatch, MultifilePatcher, Patch, Patcher};
+use diffpatch::{ApplyResult, Differ, MultifilePatch, MultifilePatcher, Patch, Patcher};
 
 use std::fs;
 use std::path::PathBuf;
@@ -132,28 +132,61 @@ fn main() -> Result<()> {
             directory,
             reverse,
         } => {
-            // Change to the specified directory if provided
-            let original_dir = if let Some(dir) = directory {
-                let current_dir = std::env::current_dir()?;
-                std::env::set_current_dir(&dir)?;
-                Some(current_dir)
-            } else {
-                None
-            };
+            // Determine the root directory for applying patches.
+            let root_dir = directory.unwrap_or(std::env::current_dir()?);
 
-            // Parse and apply the multifile patch
-            let multifile_patch = MultifilePatch::parse_from_file(patch_path)?;
-            let patcher = MultifilePatcher::new(multifile_patch);
-            let written_files = patcher.apply_and_write(reverse)?;
+            // Parse the multifile patch.
+            let multifile_patch = MultifilePatch::parse_from_file(&patch_path)?;
 
-            println!("Successfully updated {} files:", written_files.len());
-            for file in written_files {
-                println!("  {}", file);
+            // Create the patcher with the specified root directory.
+            let patcher = MultifilePatcher::with_root(multifile_patch, &root_dir);
+
+            // Apply the patches and write changes.
+            let results = patcher.apply_and_write(reverse)?;
+
+            // Report the results to the user.
+            let mut applied_count = 0;
+            let mut deleted_count = 0;
+            let mut skipped_count = 0;
+            let mut failed_count = 0;
+
+            println!("Patch application results:");
+            for result in results {
+                match result {
+                    ApplyResult::Applied(file) => {
+                        println!(
+                            "  Applied: {} {}",
+                            file.path,
+                            if file.is_new { "(new file)" } else { "" }
+                        );
+                        applied_count += 1;
+                    }
+                    ApplyResult::Deleted(path) => {
+                        println!("  Deleted: {}", path);
+                        deleted_count += 1;
+                    }
+                    ApplyResult::Skipped(reason) => {
+                        println!("  Skipped: {}", reason);
+                        skipped_count += 1;
+                    }
+                    ApplyResult::Failed(path, error) => {
+                        eprintln!("  Failed: {} - {}", path, error); // Use eprintln for errors
+                        failed_count += 1;
+                    }
+                }
             }
 
-            // Change back to the original directory if we changed it
-            if let Some(dir) = original_dir {
-                std::env::set_current_dir(dir)?;
+            println!("\nSummary:");
+            println!("  {} applied/modified", applied_count);
+            println!("  {} deleted", deleted_count);
+            println!("  {} skipped", skipped_count);
+            println!("  {} failed", failed_count);
+
+            if failed_count > 0 {
+                // Indicate overall failure if any patch failed.
+                // Consider returning a specific error code or using anyhow::bail!
+                // std::process::exit(1);
+                anyhow::bail!("{} patches failed to apply.", failed_count);
             }
         }
     }

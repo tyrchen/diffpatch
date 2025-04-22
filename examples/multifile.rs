@@ -1,5 +1,5 @@
 use anyhow::Result;
-use diffpatch::{Differ, MultifilePatch, MultifilePatcher};
+use diffpatch::{ApplyResult, Differ, MultifilePatch, MultifilePatcher};
 use std::fs;
 use std::path::Path;
 
@@ -129,24 +129,46 @@ fn apply_patch(patch_path: &Path, reverse: bool) -> Result<()> {
 
     // Apply the patch
     let multi_patcher = MultifilePatcher::new(multi_patch);
-    let patched_files = multi_patcher.apply_and_write(reverse)?;
+    let results = multi_patcher.apply_and_write(reverse)?;
 
     println!(
-        "\nSuccessfully {} changes to {} files:",
-        if reverse { "reverted" } else { "applied" },
-        patched_files.len()
+        "\n{} action resulted in {} outcomes:",
+        action,
+        results.len()
     );
 
-    for file in patched_files {
-        println!("  - {}", file);
-
-        // Read and display the file content
-        let content = fs::read_to_string(file)?;
-        println!(
-            "    Content (first 50 chars): {}",
-            content.chars().take(50).collect::<String>()
-        );
+    let mut success_count = 0;
+    for result in results {
+        match result {
+            ApplyResult::Applied(file) => {
+                println!(
+                    "  - Applied: {} {}",
+                    file.path,
+                    if file.is_new { "(new file)" } else { "" }
+                );
+                // Read and display the file content
+                match fs::read_to_string(&file.path) {
+                    Ok(content) => println!(
+                        "    Content (first 50 chars): {}",
+                        content.chars().take(50).collect::<String>()
+                    ),
+                    Err(e) => println!("    Error reading file {}: {}", file.path, e),
+                };
+                success_count += 1;
+            }
+            ApplyResult::Deleted(path) => {
+                println!("  - Deleted: {}", path);
+                success_count += 1;
+            }
+            ApplyResult::Skipped(reason) => {
+                println!("  - Skipped: {}", reason);
+            }
+            ApplyResult::Failed(path, error) => {
+                println!("  - Failed: {} - {}", path, error);
+            }
+        }
     }
+    println!("Successfully processed {} files/patches.", success_count);
 
     Ok(())
 }
