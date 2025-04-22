@@ -159,7 +159,7 @@ impl Patch {
         }
 
         Ok(Patch {
-            preemble,
+            preamble: preemble,
             old_file,
             new_file,
             chunks,
@@ -285,7 +285,7 @@ fn parse_number(s: &str, field_name: &str) -> Result<usize, Error> {
 
 impl fmt::Display for Patch {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if let Some(preemble) = &self.preemble {
+        if let Some(preemble) = &self.preamble {
             writeln!(f, "{}", preemble)?;
         }
         writeln!(f, "--- a/{}", self.old_file)?;
@@ -323,7 +323,7 @@ diff -u a/file.txt b/file.txt
         assert_eq!(patch.new_file, "file.txt");
         assert_eq!(patch.chunks.len(), 1);
         assert_eq!(
-            patch.preemble,
+            patch.preamble,
             Some("diff -u a/file.txt b/file.txt".to_string())
         );
 
@@ -368,7 +368,7 @@ diff -u a/file.txt b/file.txt
 
         let patch2 = Patch::parse(patch_str2).unwrap();
         assert_eq!(
-            patch2.preemble,
+            patch2.preamble,
             Some("diff --git a/file.txt b/file.txt".to_string())
         );
     }

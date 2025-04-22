@@ -30,7 +30,7 @@ impl MultifilePatch {
                     let patch_content = current_lines.join("\n");
                     let mut patch = Patch::parse(&patch_content)?;
                     if let Some(pre) = preamble.take() {
-                        patch.preemble = Some(pre);
+                        patch.preamble = Some(pre);
                     }
                     patches.push(patch);
                     current_lines.clear();
@@ -65,7 +65,7 @@ impl MultifilePatch {
             let patch_content = current_lines.join("\n");
             let mut patch = Patch::parse(&patch_content)?;
             if let Some(pre) = preamble {
-                patch.preemble = Some(pre);
+                patch.preamble = Some(pre);
             }
             patches.push(patch);
         }
@@ -292,7 +292,7 @@ impl MultifilePatcher {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Differ;
+    use crate::{differ::DiffAlgorithmType, Differ};
     use std::fs;
     use tempfile::TempDir;
 
@@ -312,14 +312,14 @@ mod tests {
         // Create patches
         let old1 = "line1\nline2\nline3\n";
         let new1 = "line1\nmodified\nline3\n";
-        let differ1 = Differ::new(old1, new1);
+        let differ1 = Differ::new(old1, new1, DiffAlgorithmType::Myers);
         let mut patch1 = differ1.generate();
         patch1.old_file = file1_path.to_str().unwrap().to_string();
         patch1.new_file = file1_path.to_str().unwrap().to_string();
 
         let old2 = "foo\nbar\nbaz\n";
         let new2 = "foo\nbar\nqux\n";
-        let differ2 = Differ::new(old2, new2);
+        let differ2 = Differ::new(old2, new2, DiffAlgorithmType::Myers);
         let mut patch2 = differ2.generate();
         patch2.old_file = file2_path.to_str().unwrap().to_string();
         patch2.new_file = file2_path.to_str().unwrap().to_string();
@@ -387,7 +387,7 @@ diff --git a/file2.txt b/file2.txt
         // Create patch for a new file
         let new_content = "This is a new file\nwith some content\n";
         let mut patch = Patch {
-            preemble: Some("diff --git a/dev/null b/newfile.txt".to_string()),
+            preamble: Some("diff --git a/dev/null b/newfile.txt".to_string()),
             old_file: "/dev/null".to_string(),
             new_file: temp_path.join("newfile.txt").to_str().unwrap().to_string(),
             chunks: vec![],
@@ -433,7 +433,7 @@ diff --git a/file2.txt b/file2.txt
 
         // Create patch that deletes the file
         let mut patch = Patch {
-            preemble: Some("diff --git a/delete.txt b/dev/null".to_string()),
+            preamble: Some("diff --git a/delete.txt b/dev/null".to_string()),
             old_file: file_to_delete.to_str().unwrap().to_string(),
             new_file: "/dev/null".to_string(),
             chunks: vec![],
@@ -477,7 +477,7 @@ diff --git a/file2.txt b/file2.txt
         // Create a patch that expects the content to start at line 0
         let patch_source = "line1\nline2\nline3"; // No trailing newline
         let patch_target = "line1\nmodified line\nline3"; // No trailing newline
-        let differ = Differ::new(patch_source, patch_target);
+        let differ = Differ::new(patch_source, patch_target, DiffAlgorithmType::Myers);
         let mut patch = differ.generate();
         patch.old_file = file_path.to_str().unwrap().to_string();
         patch.new_file = file_path.to_str().unwrap().to_string();

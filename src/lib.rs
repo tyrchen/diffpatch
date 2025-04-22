@@ -1,9 +1,12 @@
 use thiserror::Error;
 
-mod differ;
+pub mod differ;
 mod multipatch;
 mod patch;
 mod patcher;
+
+// Re-export the differ implementations for convenience
+pub use differ::{DiffAlgorithm, Differ, MyersDiffer, NaiveDiffer};
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -23,24 +26,35 @@ pub enum Error {
     FileNotFound(String),
 }
 
+/// The Diff trait allows implementing a diffing algorithm for custom types
+pub trait Diff {
+    /// The error type returned by the diff implementation
+    type Error;
+
+    /// Called when elements are equal between sequences
+    fn equal(&mut self, old_idx: usize, new_idx: usize, count: usize) -> Result<(), Self::Error>;
+
+    /// Called when elements need to be deleted from the old sequence
+    fn delete(&mut self, old_idx: usize, count: usize, new_idx: usize) -> Result<(), Self::Error>;
+
+    /// Called when elements need to be inserted from the new sequence
+    fn insert(&mut self, old_idx: usize, new_idx: usize, count: usize) -> Result<(), Self::Error>;
+
+    /// Called when the diff is complete
+    fn finish(&mut self) -> Result<(), Self::Error>;
+}
+
 /// A patch represents all the changes between two versions of a file
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Patch {
     /// Preemble of the patch, something like "diff -u a/file.txt b/file.txt"
-    pub preemble: Option<String>,
+    pub preamble: Option<String>,
     /// Original file path
     pub old_file: String,
     /// New file path
     pub new_file: String,
     /// Chunks of changes
     pub chunks: Vec<Chunk>,
-}
-
-/// The Differ struct is used to generate a patch between old and new content
-pub struct Differ {
-    old: String,
-    new: String,
-    context_lines: usize,
 }
 
 /// The Patcher struct is used to apply a patch to content
@@ -99,6 +113,7 @@ pub struct Chunk {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::differ::DiffAlgorithmType;
 
     #[test]
     fn test_integration() {
@@ -106,7 +121,7 @@ mod tests {
         let new = "line1\nline2 modified\nline3\nline4";
 
         // Generate a patch
-        let differ = Differ::new(old, new);
+        let differ = Differ::new(old, new, DiffAlgorithmType::Myers);
         let patch = differ.generate();
 
         // Apply the patch

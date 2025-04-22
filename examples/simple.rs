@@ -1,4 +1,5 @@
 use anyhow::Result;
+use diffpatch::differ::DiffAlgorithmType;
 use diffpatch::{Differ, Patch, Patcher};
 use std::fs;
 use std::path::Path;
@@ -26,7 +27,7 @@ fn single_file_example() -> Result<()> {
     println!("{}", modified);
 
     // Generate a patch
-    let differ = Differ::new(original, modified);
+    let differ = Differ::new(original, modified, DiffAlgorithmType::Myers);
     let patch = differ.generate();
 
     println!("\n=== Generated Patch ===");
@@ -98,12 +99,12 @@ fn multi_file_example() -> Result<()> {
     let file2_modified = "This is file 2\nwith different content\nthat has been changed.";
 
     // Create patches for each file
-    let differ1 = Differ::new(file1_original, file1_modified);
+    let differ1 = Differ::new(file1_original, file1_modified, DiffAlgorithmType::Myers);
     let mut patch1 = differ1.generate();
     patch1.old_file = file1_path.to_str().unwrap().to_string();
     patch1.new_file = file1_path.to_str().unwrap().to_string();
 
-    let differ2 = Differ::new(file2_original, file2_modified);
+    let differ2 = Differ::new(file2_original, file2_modified, DiffAlgorithmType::Myers);
     let mut patch2 = differ2.generate();
     patch2.old_file = file2_path.to_str().unwrap().to_string();
     patch2.new_file = file2_path.to_str().unwrap().to_string();

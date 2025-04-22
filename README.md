@@ -11,6 +11,8 @@ A Rust library for generating and applying Git-style unified diff patches.
 - Parse patches from text format
 - Support for multi-file patches
 - Command-line interface for generating and applying patches
+- Efficient Myers diff algorithm implementation
+- Customizable diff implementation for any data type
 
 ## Installation
 
@@ -91,6 +93,53 @@ fn main() {
 }
 ```
 
+### Using the Myers Diff Algorithm
+
+The library provides a low-level Myers diff algorithm implementation that can be used with any data type:
+
+```rust
+use diffpatch::{Diff, myers_diff};
+
+// Implement the Diff trait for your custom differ
+struct MyDiffer;
+
+impl Diff for MyDiffer {
+    type Error = String;
+
+    fn equal(&mut self, old_idx: usize, new_idx: usize, count: usize) -> Result<(), Self::Error> {
+        println!("Equal: {} elements at old index {} and new index {}", count, old_idx, new_idx);
+        Ok(())
+    }
+
+    fn delete(&mut self, old_idx: usize, count: usize, new_idx: usize) -> Result<(), Self::Error> {
+        println!("Delete: {} elements at old index {}", count, old_idx);
+        Ok(())
+    }
+
+    fn insert(&mut self, old_idx: usize, new_idx: usize, count: usize) -> Result<(), Self::Error> {
+        println!("Insert: {} elements at new index {}", count, new_idx);
+        Ok(())
+    }
+
+    fn finish(&mut self) -> Result<(), Self::Error> {
+        println!("Diff complete");
+        Ok(())
+    }
+}
+
+fn main() {
+    let old = vec![1, 2, 3, 4, 5];
+    let new = vec![1, 2, 10, 4, 8];
+
+    let mut differ = MyDiffer;
+
+    // Calculate diff between the two sequences
+    myers_diff(&mut differ, &old, 0, old.len(), &new, 0, new.len()).unwrap();
+}
+```
+
+See the [myers_diff.rs](examples/myers_diff.rs) example for a more complete demonstration.
+
 ### Working with Multi-file Patches
 
 ```rust
@@ -143,10 +192,11 @@ diffpatch-cli apply-multi --patch changes.patch [--directory /path/to/target] [-
 - `Operation`: Represents a single line in a diff (addition, deletion, or context)
 - `MultifilePatch`: Collection of patches for multiple files
 - `MultifilePatcher`: Applies multiple patches to files
+- `Diff`: Trait for implementing custom diff logic
+- `myers_diff`: Function to apply the efficient Myers algorithm to custom sequence types
 
 ## Limitations
 
-- The current diff creation algorithm is naive and doesn't create optimal diffs
 - Limited support for various diff formats (focuses on git-style diffs)
 
 ## License

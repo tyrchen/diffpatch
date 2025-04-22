@@ -1,5 +1,6 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
+use diffpatch::differ::DiffAlgorithmType;
 use diffpatch::{Differ, MultifilePatch, MultifilePatcher, Patch, Patcher};
 
 use std::fs;
@@ -81,7 +82,8 @@ fn main() -> Result<()> {
             let old_content = fs::read_to_string(&old)?;
             let new_content = fs::read_to_string(&new)?;
 
-            let differ = Differ::new(&old_content, &new_content).context_lines(context);
+            let differ = Differ::new(&old_content, &new_content, DiffAlgorithmType::Myers)
+                .context_lines(context);
             let mut patch = differ.generate();
 
             // Set filenames based on the paths
