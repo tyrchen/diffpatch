@@ -1,4 +1,4 @@
-use diffpatch::{differ::Differ, MultifilePatch};
+use diffpatch::{differ::Differ, DiffAlgorithm, MultifilePatch, PatchAlgorithm, Patcher};
 use divan::{black_box, Bencher};
 use std::collections::HashMap;
 
@@ -22,7 +22,7 @@ fn simulate_multifile_patch(
 
     for patch in patches {
         if let Some(content) = files.get(&patch.old_file) {
-            let patcher = diffpatch::Patcher::new(patch.clone());
+            let patcher = Patcher::new(patch.clone());
             if let Ok(new_content) = patcher.apply(content, false) {
                 // Determine if it's a new file or deletion based on patch paths
                 let is_new = patch.old_file == "/dev/null" || patch.old_file.ends_with("/dev/null");

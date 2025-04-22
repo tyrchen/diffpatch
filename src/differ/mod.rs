@@ -56,26 +56,15 @@ impl Differ {
         self.context_lines = lines;
         self
     }
+}
 
-    /// Generate a patch using the configured diffing algorithm.
-    pub fn generate(&self) -> Patch {
+impl DiffAlgorithm for Differ {
+    fn generate(&self) -> Patch {
         match self.algorithm {
-            DiffAlgorithmType::Myers => {
-                let differ = MyersDiffer::new(self);
-                differ.generate()
-            }
-            DiffAlgorithmType::Naive => {
-                let differ = NaiveDiffer::new(self);
-                differ.generate()
-            }
-            DiffAlgorithmType::XDiff => {
-                let differ = XDiffDiffer::new(self);
-                differ.generate()
-            }
-            DiffAlgorithmType::Similar => {
-                let differ = SimilarDiffer::new(self);
-                differ.generate()
-            }
+            DiffAlgorithmType::Myers => MyersDiffer::new(self).generate(),
+            DiffAlgorithmType::Naive => NaiveDiffer::new(self).generate(),
+            DiffAlgorithmType::XDiff => XDiffDiffer::new(self).generate(),
+            DiffAlgorithmType::Similar => SimilarDiffer::new(self).generate(),
         }
     }
 }
@@ -83,7 +72,7 @@ impl Differ {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Patcher;
+    use crate::{PatchAlgorithm, Patcher};
 
     #[test]
     fn test_different_algorithms_produce_valid_patches() {

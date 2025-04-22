@@ -1,4 +1,7 @@
-use diffpatch::differ::{DiffAlgorithmType, Differ};
+use diffpatch::{
+    differ::{DiffAlgorithmType, Differ},
+    DiffAlgorithm,
+};
 use divan::{black_box, Bencher};
 
 #[global_allocator]

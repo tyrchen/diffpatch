@@ -675,7 +675,7 @@ impl DiffAlgorithm for XDiffDiffer<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{differ::DiffAlgorithmType, test_utils::load_fixture, Patcher};
+    use crate::{differ::DiffAlgorithmType, test_utils::load_fixture, PatchAlgorithm, Patcher};
 
     // Keeping existing tests - they should still pass if the algorithm is correct,
     // though the exact chunking might differ slightly from the previous LCS impl.

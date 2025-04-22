@@ -1,5 +1,5 @@
 use anyhow::Result;
-use diffpatch::{Differ, Patch, Patcher};
+use diffpatch::{DiffAlgorithm, Differ, Patch, PatchAlgorithm, Patcher};
 use std::fs;
 use std::path::Path;
 

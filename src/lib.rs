@@ -1,15 +1,16 @@
-use thiserror::Error;
-
 pub mod differ;
+pub mod patcher;
+
 mod multipatch;
 mod patch;
-mod patcher;
+
+use thiserror::Error;
 
 // Re-export the differ implementations for convenience
 pub use differ::{DiffAlgorithm, Differ, MyersDiffer, NaiveDiffer};
 pub use multipatch::{ApplyResult, MultifilePatch, MultifilePatcher, PatchedFile};
 pub use patch::{Chunk, Operation, Patch};
-pub use patcher::Patcher;
+pub use patcher::{NaivePatcher, PatchAlgorithm, Patcher, PatcherAlgorithm};
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -49,8 +50,10 @@ mod test_utils {
 }
 #[cfg(test)]
 mod tests {
+    use crate::{DiffAlgorithm, PatchAlgorithm};
+
     // Bring necessary items into scope for the test
-    use super::{Differ, Error, Patcher};
+    use super::{patcher::Patcher, Differ, Error};
 
     #[test]
     fn test_integration_diff_and_patch() -> Result<(), Error> {

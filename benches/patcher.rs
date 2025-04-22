@@ -1,4 +1,4 @@
-use diffpatch::{Differ, Patcher};
+use diffpatch::{DiffAlgorithm, Differ, PatchAlgorithm, Patcher};
 use divan::{black_box, Bencher};
 
 #[global_allocator]

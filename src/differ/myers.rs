@@ -113,7 +113,7 @@ impl DiffAlgorithm for MyersDiffer<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{test_utils::load_fixture, Patcher};
+    use crate::{test_utils::load_fixture, PatchAlgorithm, Patcher};
 
     #[test]
     fn test_simple_myers_diff() {

@@ -1,6 +1,7 @@
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
-use diffpatch::{ApplyResult, Differ, MultifilePatch, MultifilePatcher, Patch, Patcher};
+use diffpatch::{patcher::Patcher, ApplyResult, Differ, MultifilePatch, MultifilePatcher, Patch};
+use diffpatch::{DiffAlgorithm, PatchAlgorithm};
 use std::fs;
 use std::path::{Path, PathBuf};
 

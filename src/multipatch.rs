@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use tracing::warn;
 
-use crate::{Error, Patch, Patcher};
+use crate::{Error, Patch, PatchAlgorithm, Patcher};
 
 /// Represents a file that has been patched.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -355,7 +355,7 @@ impl MultifilePatcher {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Differ;
+    use crate::{DiffAlgorithm, Differ};
     use std::fs;
     use tempfile::tempdir; // Use tempdir instead of TempDir for simpler Result handling
 
