@@ -9,7 +9,7 @@ use std::ops::Index;
 pub use myers::MyersDiffer;
 pub use naive::NaiveDiffer;
 
-pub(crate) use common::*;
+pub use common::*;
 
 /// Trait for different diffing algorithms
 pub trait DiffAlgorithm {

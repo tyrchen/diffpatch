@@ -24,8 +24,22 @@ thiserror = "2.0"
 [dev-dependencies]
 tempfile = "3.19"
 git2 = "0.20"
+divan = "0.1.21"
+fastrand = "2.0"
 
 [[bin]]
 name = "diffpatch-cli"
 path = "src/main.rs"
 required-features = ["cli"]
+
+[[bench]]
+name = "differ"
+harness = false
+
+[[bench]]
+name = "patcher"
+harness = false
+
+[[bench]]
+name = "multifile_patcher"
+harness = false
