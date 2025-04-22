@@ -294,7 +294,7 @@ fn test_diff_test3() {
     let files_to_check = [
         (
             "README.md",
-            "- `MultifilePatch`: Collection of patches for multiple files
+            "- `MultifilePatch`: Collection of patches for multiple files \
 - `MultifilePatcher`: Applies multiple patches to files",
         ),
         ("src/lib.rs", "MultifilePatch"),
