@@ -12,7 +12,6 @@ fn fixtures_path() -> PathBuf {
 }
 
 #[test]
-#[ignore = "This test is sensitive to git diff format and line position in git history. Use test_apply_multifile_git_diff instead."]
 fn test_apply_multifile_patch() {
     // Create a temporary directory for our test
     let temp_dir = TempDir::new().unwrap();
