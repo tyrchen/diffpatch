@@ -1,9 +1,4 @@
-use crate::{Error, Operation, Patch};
-
-/// The Patcher struct is used to apply a patch to content
-pub struct Patcher {
-    patch: Patch,
-}
+use crate::{Error, Operation, Patch, Patcher};
 
 impl Patcher {
     /// Create a new Patcher with the given patch

@@ -1,13 +1,8 @@
-use std::fmt;
 use thiserror::Error;
 
 mod differ;
 mod patch;
 mod patcher;
-
-pub use differ::Differ;
-pub use patch::Patch;
-pub use patcher::Patcher;
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -21,6 +16,31 @@ pub enum Error {
     LineNotFound(String),
 }
 
+/// A patch represents all the changes between two versions of a file
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Patch {
+    /// Preemble of the patch, something like "diff -u a/file.txt b/file.txt"
+    pub preemble: Option<String>,
+    /// Original file path
+    pub old_file: String,
+    /// New file path
+    pub new_file: String,
+    /// Chunks of changes
+    pub chunks: Vec<Chunk>,
+}
+
+/// The Differ struct is used to generate a patch between old and new content
+pub struct Differ {
+    old: String,
+    new: String,
+    context_lines: usize,
+}
+
+/// The Patcher struct is used to apply a patch to content
+pub struct Patcher {
+    patch: Patch,
+}
+
 /// Represents a change operation in the patch
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Operation {
@@ -30,24 +50,6 @@ pub enum Operation {
     Remove(String),
     /// Context line (unchanged)
     Context(String),
-}
-
-impl Operation {
-    pub(crate) fn to_char(&self) -> char {
-        match self {
-            Operation::Add(_) => '+',
-            Operation::Remove(_) => '-',
-            Operation::Context(_) => ' ',
-        }
-    }
-
-    pub(crate) fn line(&self) -> &str {
-        match self {
-            Operation::Add(line) => line,
-            Operation::Remove(line) => line,
-            Operation::Context(line) => line,
-        }
-    }
 }
 
 /// A chunk represents a continuous section of changes in a file
@@ -63,25 +65,6 @@ pub struct Chunk {
     pub new_lines: usize,
     /// The operations in this chunk
     pub operations: Vec<Operation>,
-}
-
-impl fmt::Display for Chunk {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(
-            f,
-            "@@ -{},{} +{},{} @@",
-            self.old_start + 1,
-            self.old_lines,
-            self.new_start + 1,
-            self.new_lines
-        )?;
-
-        for op in &self.operations {
-            writeln!(f, "{}{}", op.to_char(), op.line())?;
-        }
-
-        Ok(())
-    }
 }
 
 #[cfg(test)]

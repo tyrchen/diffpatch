@@ -1,15 +1,41 @@
-use crate::{Chunk, Error, Operation};
+use crate::{Chunk, Error, Operation, Patch};
 use std::fmt;
 
-/// A patch represents all the changes between two versions of a file
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Patch {
-    /// Original file path
-    pub old_file: String,
-    /// New file path
-    pub new_file: String,
-    /// Chunks of changes
-    pub chunks: Vec<Chunk>,
+impl Operation {
+    pub(crate) fn to_char(&self) -> char {
+        match self {
+            Operation::Add(_) => '+',
+            Operation::Remove(_) => '-',
+            Operation::Context(_) => ' ',
+        }
+    }
+
+    pub(crate) fn line(&self) -> &str {
+        match self {
+            Operation::Add(line) => line,
+            Operation::Remove(line) => line,
+            Operation::Context(line) => line,
+        }
+    }
+}
+
+impl fmt::Display for Chunk {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(
+            f,
+            "@@ -{},{} +{},{} @@",
+            self.old_start + 1,
+            self.old_lines,
+            self.new_start + 1,
+            self.new_lines
+        )?;
+
+        for op in &self.operations {
+            writeln!(f, "{}{}", op.to_char(), op.line())?;
+        }
+
+        Ok(())
+    }
 }
 
 impl Patch {
@@ -22,9 +48,25 @@ impl Patch {
             ));
         }
 
+        // Check for preamble (diff -u or similar)
+        let mut start_idx = 0;
+        let mut preemble = None;
+
+        if lines[0].starts_with("diff ") {
+            preemble = Some(lines[0].to_string());
+            start_idx = 1;
+        }
+
+        // We need at least two more lines for the file headers
+        if start_idx + 1 >= lines.len() {
+            return Err(Error::InvalidPatchFormat(
+                "Patch must contain file header lines".to_string(),
+            ));
+        }
+
         // Parse header lines (--- and +++)
-        let old_file_line = lines[0];
-        let new_file_line = lines[1];
+        let old_file_line = lines[start_idx];
+        let new_file_line = lines[start_idx + 1];
 
         if !old_file_line.starts_with("--- ") || !new_file_line.starts_with("+++ ") {
             return Err(Error::InvalidPatchFormat(
@@ -45,7 +87,7 @@ impl Patch {
             .to_string();
 
         let mut chunks = Vec::new();
-        let mut i = 2; // Start after the header lines
+        let mut i = start_idx + 2; // Start after the header lines
 
         while i < lines.len() {
             let chunk_header = lines[i];
@@ -169,6 +211,7 @@ impl Patch {
         }
 
         Ok(Patch {
+            preemble,
             old_file,
             new_file,
             chunks,
@@ -178,6 +221,9 @@ impl Patch {
 
 impl fmt::Display for Patch {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if let Some(preemble) = &self.preemble {
+            writeln!(f, "{}", preemble)?;
+        }
         writeln!(f, "--- a/{}", self.old_file)?;
         writeln!(f, "+++ b/{}", self.new_file)?;
 
@@ -196,6 +242,7 @@ mod tests {
     #[test]
     fn test_parse_patch() {
         let patch_str = "\
+diff -u a/file.txt b/file.txt
 --- a/file.txt
 +++ b/file.txt
 @@ -1,4 +1,4 @@
@@ -211,6 +258,10 @@ mod tests {
         assert_eq!(patch.old_file, "file.txt");
         assert_eq!(patch.new_file, "file.txt");
         assert_eq!(patch.chunks.len(), 1);
+        assert_eq!(
+            patch.preemble,
+            Some("diff -u a/file.txt b/file.txt".to_string())
+        );
 
         let chunk = &patch.chunks[0];
 

@@ -1,11 +1,4 @@
-use crate::{Chunk, Operation, Patch};
-
-/// The Differ struct is used to generate a patch between old and new content
-pub struct Differ {
-    old: String,
-    new: String,
-    context_lines: usize,
-}
+use crate::{Chunk, Differ, Operation, Patch};
 
 impl Differ {
     /// Create a new Differ with the old and new content
@@ -112,6 +105,7 @@ impl Differ {
         }
 
         Patch {
+            preemble: None,
             old_file: "original".to_string(),
             new_file: "modified".to_string(),
             chunks,

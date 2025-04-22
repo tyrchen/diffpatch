@@ -1,3 +1,4 @@
+diff -u original.txt modified.txt
 --- a/original.txt
 +++ b/modified.txt
 @@ -1,6 +1,7 @@
