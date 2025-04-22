@@ -245,7 +245,7 @@ pub fn process_changes_to_chunks(
 /// Create a patch with the specified chunks
 pub fn create_patch(chunks: Vec<Chunk>) -> Patch {
     Patch {
-        preemble: None,
+        preamble: None,
         old_file: "original".to_string(),
         new_file: "modified".to_string(),
         chunks,
