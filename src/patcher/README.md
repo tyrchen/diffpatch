@@ -72,6 +72,7 @@ For detailed performance analysis and comparison between the implementations, se
 ## Implementation Details
 
 Both patchers handle:
+
 - Adding lines
 - Removing lines
 - Context verification

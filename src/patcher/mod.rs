@@ -41,8 +41,8 @@ pub trait PatchAlgorithm {
 /// Enum to specify which patching algorithm to use
 #[derive(Clone, Default)]
 pub enum PatcherAlgorithm {
-    #[default]
     Naive,
+    #[default]
     Similar,
 }
 
