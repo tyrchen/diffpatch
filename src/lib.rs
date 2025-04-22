@@ -48,7 +48,7 @@ pub trait Diff {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Patch {
     /// Preemble of the patch, something like "diff -u a/file.txt b/file.txt"
-    pub preemble: Option<String>,
+    pub preamble: Option<String>,
     /// Original file path
     pub old_file: String,
     /// New file path

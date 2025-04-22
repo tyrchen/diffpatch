@@ -19,7 +19,7 @@ pub fn handle_empty_files(old_lines: &[&str], new_lines: &[&str]) -> Option<Patc
         }
 
         return Some(Patch {
-            preemble: None,
+            preamble: None,
             old_file: "original".to_string(),
             new_file: "modified".to_string(),
             chunks: vec![Chunk {
@@ -38,7 +38,7 @@ pub fn handle_empty_files(old_lines: &[&str], new_lines: &[&str]) -> Option<Patc
         }
 
         return Some(Patch {
-            preemble: None,
+            preamble: None,
             old_file: "original".to_string(),
             new_file: "modified".to_string(),
             chunks: vec![Chunk {
@@ -52,7 +52,7 @@ pub fn handle_empty_files(old_lines: &[&str], new_lines: &[&str]) -> Option<Patc
     } else if old_lines.is_empty() && new_lines.is_empty() {
         // Both files are empty, no diff needed
         return Some(Patch {
-            preemble: None,
+            preamble: None,
             old_file: "original".to_string(),
             new_file: "modified".to_string(),
             chunks: Vec::new(),
