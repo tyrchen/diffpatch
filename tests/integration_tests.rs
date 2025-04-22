@@ -65,10 +65,10 @@ fn setup_git_checkout(tag_name: &str) -> (TempDir, PathBuf) {
 }
 
 // Helper function to update patch file paths to point to the temp directory
-fn update_patch_file_paths(patch: MultifilePatch, temp_path: &Path) -> MultifilePatch {
+fn update_patch_file_paths(mp: MultifilePatch, temp_path: &Path) -> MultifilePatch {
     let mut updated_patches = Vec::new();
 
-    for mut patch in patch.patches {
+    for mut patch in mp.patches {
         // Convert relative paths to absolute paths
         if patch.old_file == "/dev/null" {
             // For new files, keep /dev/null as is
@@ -200,7 +200,7 @@ fn apply_and_verify_patch(
 }
 
 #[test]
-fn test_apply_multifile_patch() {
+fn test_diff_test1() {
     // Set up a git checkout with the diff-test1 tag
     let (_temp_dir, temp_path) = setup_git_checkout("diff-test1");
 
@@ -220,7 +220,7 @@ fn test_apply_multifile_patch() {
 }
 
 #[test]
-fn test_apply_multifile_patch_test2() {
+fn test_diff_test2() {
     // Set up a git checkout with the diff-test2 tag
     let (_temp_dir, temp_path) = setup_git_checkout("diff-test2");
 
