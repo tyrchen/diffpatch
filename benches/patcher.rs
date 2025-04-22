@@ -1,4 +1,4 @@
-use diffpatch::{differ::Differ, Patch, Patcher};
+use diffpatch::{Differ, Patcher};
 use divan::{black_box, Bencher};
 
 #[global_allocator]
@@ -8,63 +8,52 @@ fn main() {
     divan::main();
 }
 
-const TEXT_SIZES: &[usize] = &[
-    1_000,   // Medium texts
-    10_000,  // Large texts
-    100_000, // Very large texts
+// Define the fixture pairs to benchmark (same as differ.rs)
+const FIXTURE_PAIRS: &[(&str, &str)] = &[
+    ("simple_before.rs", "simple_after.rs"),
+    ("complex_before.rs", "complex_after.rs"),
 ];
 
-fn generate_texts_and_patch(size: usize, change_percentage: f64) -> (String, String, Patch) {
-    let alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 \n\t";
-    let mut rng = fastrand::Rng::with_seed(42);
-
-    // Generate original text
-    let original: String = (0..size)
-        .map(|_| {
-            let idx = rng.usize(0..alphabet.len());
-            alphabet.chars().nth(idx).unwrap()
-        })
-        .collect();
-
-    // Generate modified text by changing some characters
-    let change_count = (size as f64 * change_percentage).round() as usize;
-    let original_chars: Vec<char> = original.chars().collect();
-    let mut modified_chars = original_chars.clone();
-
-    for _ in 0..change_count {
-        let pos = rng.usize(0..modified_chars.len());
-        let idx = rng.usize(0..alphabet.len());
-        let new_char = alphabet.chars().nth(idx).unwrap();
-        modified_chars[pos] = new_char;
-    }
-
-    let modified: String = modified_chars.into_iter().collect();
-
-    // Generate patch
-    let differ = Differ::new(&original, &modified);
-    let patch = differ.generate();
-
-    (original, modified, patch)
+// Helper to load fixture files relative to crate root
+pub(crate) fn load_fixture(name: &str) -> String {
+    let path = format!("fixtures/code/{}", name);
+    std::fs::read_to_string(path).unwrap()
 }
 
-// Benchmark for patching performance with varying text sizes and change rates
-#[divan::bench(args = TEXT_SIZES)]
-fn patch_application_25pct(bencher: Bencher, size: usize) {
-    let (original, _modified, patch) = generate_texts_and_patch(size, 0.25);
+// Benchmark applying the patch forward
+#[divan::bench(args = [0, 1], name = "patcher_forward")]
+fn patcher_apply_forward(bencher: Bencher, index: usize) {
+    let pair = FIXTURE_PAIRS[index];
+    let original_content = load_fixture(pair.0);
+    let new_content = load_fixture(pair.1);
 
-    bencher.bench(|| {
-        let patcher = Patcher::new(patch.clone());
-        black_box(patcher.apply(black_box(&original), false))
-    });
+    // Pre-generate the patch outside the benchmark loop
+    let patch = Differ::new(&original_content, &new_content).generate();
+    let patcher = Patcher::new(patch);
+
+    bencher
+        .with_inputs(|| original_content.clone()) // Clone original content for each run
+        .bench_values(|content| {
+            // Black box the patcher and content to prevent optimizations
+            black_box(patcher.apply(black_box(&content), false))
+        });
 }
 
-// Benchmark for patch creation from a diff
-#[divan::bench(args = TEXT_SIZES)]
-fn patch_creation_25pct(bencher: Bencher, size: usize) {
-    let (original, modified, _) = generate_texts_and_patch(size, 0.25);
+// Benchmark applying the patch in reverse
+#[divan::bench(args = [0, 1], name = "patcher_reverse")]
+fn patcher_apply_reverse(bencher: Bencher, index: usize) {
+    let pair = FIXTURE_PAIRS[index];
+    let original_content = load_fixture(pair.0);
+    let new_content = load_fixture(pair.1);
 
-    bencher.bench(|| {
-        let differ = Differ::new(black_box(&original), black_box(&modified));
-        black_box(differ.generate())
-    });
+    // Pre-generate the patch outside the benchmark loop
+    let patch = Differ::new(&original_content, &new_content).generate();
+    let patcher = Patcher::new(patch);
+
+    bencher
+        .with_inputs(|| new_content.clone()) // Clone new content for each run
+        .bench_values(|content| {
+            // Black box the patcher and content to prevent optimizations
+            black_box(patcher.apply(black_box(&content), true))
+        });
 }

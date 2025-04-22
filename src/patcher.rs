@@ -49,24 +49,32 @@ impl Patcher {
         let mut first_line_written = true;
 
         for chunk in &self.patch.chunks {
-            let (expected_start_line, operations_cow) =
+            let (expected_start_line_one_based, operations_cow) =
                 self.prepare_chunk_operations(chunk, reverse);
             let operations = operations_cow.as_ref();
+
+            // Ensure expected_start_line is 0-based for find_chunk_start_position
+            let expected_start_line_zero_based = expected_start_line_one_based.saturating_sub(1);
 
             let actual_start_line = self.find_chunk_start_position(
                 &lines,
                 current_line_index,
-                expected_start_line,
+                expected_start_line_zero_based,
                 operations,
             )?;
 
-            current_line_index = self.append_lines_until(
+            self.append_lines_until(
                 &lines,
                 current_line_index,
                 actual_start_line,
                 &mut result,
                 &mut first_line_written,
             )?;
+
+            // Ensure current_line_index is correctly set to actual_start_line before applying chunk
+            // This handles cases where find_chunk_start_position found an earlier line than expected
+            // due to fuzzy matching, and append_lines_until didn't update the index.
+            current_line_index = actual_start_line;
 
             current_line_index = self.apply_chunk_operations_to_string(
                 &lines,
@@ -674,6 +682,13 @@ mod tests {
     use super::*;
     use crate::{Chunk, Differ}; // Need Differ and Chunk for setup
 
+    // Helper to load fixture files relative to crate root
+    fn load_fixture(name: &str) -> String {
+        let path = format!("fixtures/code/{}", name);
+        std::fs::read_to_string(&path)
+            .unwrap_or_else(|e| panic!("Failed to load fixture '{}': {}", path, e))
+    }
+
     fn create_test_patch(old: &str, new: &str) -> Patch {
         Differ::new(old, new).generate()
     }
@@ -928,5 +943,56 @@ mod tests {
         assert_eq!(similarity_score("", "abc"), 0.0);
         assert_eq!(similarity_score("abc", ""), 0.0);
         assert_eq!(similarity_score("", ""), 1.0);
+    }
+
+    // --- Fixture-based Tests ---
+
+    #[test]
+    fn test_apply_simple_fixture() {
+        let old_content = load_fixture("simple_before.rs");
+        let new_content = load_fixture("simple_after.rs");
+        let patch = create_test_patch(&old_content, &new_content);
+        let patcher = Patcher::new(patch);
+        let result = patcher
+            .apply(&old_content, false)
+            .expect("Applying simple fixture patch failed");
+        assert_eq!(result, new_content);
+    }
+
+    #[test]
+    fn test_reverse_simple_fixture() {
+        let old_content = load_fixture("simple_before.rs");
+        let new_content = load_fixture("simple_after.rs");
+        let patch = create_test_patch(&old_content, &new_content);
+        println!("patch: {}", patch);
+        let patcher = Patcher::new(patch);
+        let result = patcher
+            .apply(&new_content, true)
+            .expect("Reversing simple fixture patch failed");
+        assert_eq!(result, old_content);
+    }
+
+    #[test]
+    fn test_apply_complex_fixture() {
+        let old_content = load_fixture("complex_before.rs");
+        let new_content = load_fixture("complex_after.rs");
+        let patch = create_test_patch(&old_content, &new_content);
+        let patcher = Patcher::new(patch);
+        let result = patcher
+            .apply(&old_content, false)
+            .expect("Applying complex fixture patch failed");
+        assert_eq!(result, new_content);
+    }
+
+    #[test]
+    fn test_reverse_complex_fixture() {
+        let old_content = load_fixture("complex_before.rs");
+        let new_content = load_fixture("complex_after.rs");
+        let patch = create_test_patch(&old_content, &new_content);
+        let patcher = Patcher::new(patch);
+        let result = patcher
+            .apply(&new_content, true)
+            .expect("Reversing complex fixture patch failed");
+        assert_eq!(result, old_content);
     }
 }
