@@ -8,6 +8,18 @@ pub struct XDiffDiffer<'a> {
     differ: &'a Differ,
 }
 
+/// Parameters for comparing files to reduce function argument count
+struct CompareParams<'a> {
+    old_hash: &'a [u64],
+    old_changes: &'a mut [bool],
+    old_start: usize,
+    old_end: usize,
+    new_hash: &'a [u64],
+    new_changes: &'a mut [bool],
+    new_start: usize,
+    new_end: usize,
+}
+
 impl<'a> XDiffDiffer<'a> {
     /// Create a new XDiffDiffer from a base Differ instance
     pub fn new(differ: &'a Differ) -> Self {
@@ -29,16 +41,16 @@ impl<'a> XDiffDiffer<'a> {
 
         // Compare each line in old file with each line in new file
         // This is a naive approach, but simpler to implement reliably in Rust
-        self.compare_files(
-            &old_hash,
-            &mut old_changes,
-            0,
-            old_len,
-            &new_hash,
-            &mut new_changes,
-            0,
-            new_len,
-        );
+        self.compare_files(CompareParams {
+            old_hash: &old_hash,
+            old_changes: &mut old_changes,
+            old_start: 0,
+            old_end: old_len,
+            new_hash: &new_hash,
+            new_changes: &mut new_changes,
+            new_start: 0,
+            new_end: new_len,
+        });
 
         // Build change script
         self.build_script(&old_changes, &new_changes, old_len, new_len)
@@ -56,17 +68,18 @@ impl<'a> XDiffDiffer<'a> {
     }
 
     /// Compare files and mark changes
-    fn compare_files(
-        &self,
-        old_hash: &[u64],
-        old_changes: &mut [bool],
-        old_start: usize,
-        old_end: usize,
-        new_hash: &[u64],
-        new_changes: &mut [bool],
-        new_start: usize,
-        new_end: usize,
-    ) {
+    fn compare_files(&self, params: CompareParams) {
+        let CompareParams {
+            old_hash,
+            old_changes,
+            old_start,
+            old_end,
+            new_hash,
+            new_changes,
+            new_start,
+            new_end,
+        } = params;
+
         // Find common prefix
         let mut prefix_len = 0;
         let max_prefix = std::cmp::min(old_end - old_start, new_end - new_start);
@@ -95,14 +108,18 @@ impl<'a> XDiffDiffer<'a> {
 
         // If one file segment is empty, all lines in the other must be changed
         if old_mid_start == old_mid_end {
-            for i in new_mid_start..new_mid_end {
-                new_changes[i] = true;
-            }
+            new_changes
+                .iter_mut()
+                .skip(new_mid_start)
+                .take(new_mid_end - new_mid_start)
+                .for_each(|change| *change = true);
             return;
         } else if new_mid_start == new_mid_end {
-            for i in old_mid_start..old_mid_end {
-                old_changes[i] = true;
-            }
+            old_changes
+                .iter_mut()
+                .skip(old_mid_start)
+                .take(old_mid_end - old_mid_start)
+                .for_each(|change| *change = true);
             return;
         }
 
@@ -118,35 +135,39 @@ impl<'a> XDiffDiffer<'a> {
 
         if len == 0 {
             // No common subsequence, all lines are changed
-            for i in old_mid_start..old_mid_end {
-                old_changes[i] = true;
-            }
-            for i in new_mid_start..new_mid_end {
-                new_changes[i] = true;
-            }
+            old_changes
+                .iter_mut()
+                .skip(old_mid_start)
+                .take(old_mid_end - old_mid_start)
+                .for_each(|change| *change = true);
+            new_changes
+                .iter_mut()
+                .skip(new_mid_start)
+                .take(new_mid_end - new_mid_start)
+                .for_each(|change| *change = true);
         } else {
             // Recursively process the segments before and after LCS
-            self.compare_files(
+            self.compare_files(CompareParams {
                 old_hash,
                 old_changes,
-                old_mid_start,
-                old_idx,
+                old_start: old_mid_start,
+                old_end: old_idx,
                 new_hash,
                 new_changes,
-                new_mid_start,
-                new_idx,
-            );
+                new_start: new_mid_start,
+                new_end: new_idx,
+            });
 
-            self.compare_files(
+            self.compare_files(CompareParams {
                 old_hash,
                 old_changes,
-                old_idx + len,
-                old_mid_end,
+                old_start: old_idx + len,
+                old_end: old_mid_end,
                 new_hash,
                 new_changes,
-                new_idx + len,
-                new_mid_end,
-            );
+                new_start: new_idx + len,
+                new_end: new_mid_end,
+            });
         }
     }
 
@@ -182,31 +203,36 @@ impl<'a> XDiffDiffer<'a> {
         }
 
         // Find the starting point of the LCS
-        if lcs[old_len][new_len] == 0 {
+        let longest_match = lcs[old_len][new_len];
+        if longest_match == 0 {
             return (old_start, new_start, 0);
         }
 
-        // Backtrack to find the LCS position
-        let mut i = old_len;
-        let mut j = new_len;
-        let mut len = 0;
+        // Find the best starting position for the LCS
+        let mut best_i = 0;
+        let mut best_j = 0;
+        let mut best_len = 0;
 
-        while i > 0 && j > 0 {
-            if old_hash[old_start + i - 1] == new_hash[new_start + j - 1] {
-                len += 1;
-                i -= 1;
-                j -= 1;
-            } else if lcs[i - 1][j] >= lcs[i][j - 1] {
-                i -= 1;
-            } else {
-                j -= 1;
+        // Scan through the arrays to find the longest exact match
+        for i in 0..old_len {
+            for j in 0..new_len {
+                let mut len = 0;
+                while i + len < old_len
+                    && j + len < new_len
+                    && old_hash[old_start + i + len] == new_hash[new_start + j + len]
+                {
+                    len += 1;
+                }
+
+                if len > best_len {
+                    best_len = len;
+                    best_i = i;
+                    best_j = j;
+                }
             }
         }
 
-        let start_old = old_start + i;
-        let start_new = new_start + j;
-
-        (start_old, start_new, len)
+        (old_start + best_i, new_start + best_j, best_len)
     }
 
     /// Build a change script from the comparison results
@@ -328,7 +354,11 @@ impl<'a> XDiffDiffer<'a> {
                         }
                     }
 
-                    result.push(Change::Equal(old_idx, new_idx));
+                    // Add each Equal change individually to preserve sequence
+                    for k in 0..count {
+                        result.push(Change::Equal(old_idx + k, new_idx + k));
+                    }
+
                     i = j;
                 }
             }
@@ -415,7 +445,7 @@ mod tests {
         let xdiff = XDiffDiffer::new(&differ);
         let patch = xdiff.generate();
 
-        assert!(patch.chunks.len() > 0);
+        assert!(!patch.chunks.is_empty());
         let result = Patcher::new(patch).apply(old, false).unwrap();
         assert_eq!(result, new);
     }
