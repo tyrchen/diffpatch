@@ -1,0 +1,6 @@
+This is the original text file
+with multiple lines
+that we will modify
+to demonstrate
+the diffpatch tool
+in action.

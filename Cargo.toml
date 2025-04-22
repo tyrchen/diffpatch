@@ -1,0 +1,27 @@
+[package]
+name = "diffpatch"
+version = "0.1.0"
+authors = ["Your Name <your.email@example.com>"]
+edition = "2021"
+license = "MIT"
+documentation = "https://docs.rs/"
+repository = "https://github.com/TODO"
+homepage = "https://github.com/TODO"
+description = "A library for parsing, creating, and applying Git-style diffs"
+readme = "README.md"
+categories = ["development-tools"]
+keywords = ["diff", "patch", "git", "text", "comparison"]
+
+[features]
+default = ["cli"]
+cli = ["clap"]
+
+[dependencies]
+anyhow = "1.0"
+clap = { version = "4.4", features = ["derive"], optional = true }
+thiserror = "1.0"
+
+[[bin]]
+name = "diffpatch-cli"
+path = "src/main.rs"
+required-features = ["cli"]
