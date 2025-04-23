@@ -1,5 +1,5 @@
-use patcher::{MultifilePatch, MultifilePatcher};
 use git2::Repository;
+use patcher::{MultifilePatch, MultifilePatcher};
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};

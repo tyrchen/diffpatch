@@ -687,7 +687,14 @@ index def..000
         let temp_dir = tempdir()?;
         let temp_path = temp_dir.path();
         let file_name = "target_file.txt";
-        let file_path = temp_path.join(file_name); // Create a directory where the file should be
+        let file_path = temp_path.join(file_name);
+
+        // Create a directory where the file should be, which will cause the write to fail
+        fs::create_dir(&file_path)?;
+        assert!(
+            file_path.is_dir(),
+            "Setup failed: path should be a directory"
+        );
 
         let new_content = "b";
         // Directly create a patch for a new file (without using Differ)
