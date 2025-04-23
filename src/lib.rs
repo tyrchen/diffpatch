@@ -1,12 +1,16 @@
-use thiserror::Error;
-
 pub mod differ;
+pub mod patcher;
+
 mod multipatch;
 mod patch;
-mod patcher;
+
+use thiserror::Error;
 
 // Re-export the differ implementations for convenience
 pub use differ::{DiffAlgorithm, Differ, MyersDiffer, NaiveDiffer};
+pub use multipatch::{ApplyResult, MultifilePatch, MultifilePatcher, PatchedFile};
+pub use patch::{Chunk, Operation, Patch};
+pub use patcher::{NaivePatcher, PatchAlgorithm, Patcher, PatcherAlgorithm};
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -16,117 +20,62 @@ pub enum Error {
     #[error("Invalid patch format: {0}")]
     InvalidPatchFormat(String),
 
-    #[error("Line not found: {0}")]
-    LineNotFound(String),
+    #[error("Line {line_num} not found in content while applying patch")]
+    LineNotFound { line_num: usize },
 
     #[error("IO error: {0}")]
     IoError(#[from] std::io::Error),
 
-    #[error("File not found: {0}")]
-    FileNotFound(String),
-}
+    #[error("File not found: {path}")]
+    FileNotFound { path: String },
 
-/// The Diff trait allows implementing a diffing algorithm for custom types
-pub trait Diff {
-    /// The error type returned by the diff implementation
-    type Error;
+    #[error("Could not parse chunk header: {header}")]
+    InvalidChunkHeader { header: String },
 
-    /// Called when elements are equal between sequences
-    fn equal(&mut self, old_idx: usize, new_idx: usize, count: usize) -> Result<(), Self::Error>;
-
-    /// Called when elements need to be deleted from the old sequence
-    fn delete(&mut self, old_idx: usize, count: usize, new_idx: usize) -> Result<(), Self::Error>;
-
-    /// Called when elements need to be inserted from the new sequence
-    fn insert(&mut self, old_idx: usize, new_idx: usize, count: usize) -> Result<(), Self::Error>;
-
-    /// Called when the diff is complete
-    fn finish(&mut self) -> Result<(), Self::Error>;
-}
-
-/// A patch represents all the changes between two versions of a file
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Patch {
-    /// Preemble of the patch, something like "diff -u a/file.txt b/file.txt"
-    pub preamble: Option<String>,
-    /// Original file path
-    pub old_file: String,
-    /// New file path
-    pub new_file: String,
-    /// Chunks of changes
-    pub chunks: Vec<Chunk>,
-}
-
-/// The Patcher struct is used to apply a patch to content
-pub struct Patcher {
-    patch: Patch,
-}
-
-/// Represents a file that has been patched
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PatchedFile {
-    /// Path to the file
-    pub path: String,
-    /// New content of the file
-    pub content: String,
-}
-
-/// A collection of patches for multiple files
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct MultifilePatch {
-    /// List of individual file patches
-    pub patches: Vec<Patch>,
-}
-
-/// The MultifilePatcher struct is used to apply multiple patches
-pub struct MultifilePatcher {
-    /// List of patches to apply
-    pub patches: Vec<Patch>,
-}
-
-/// Represents a change operation in the patch
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Operation {
-    /// Add a new line
-    Add(String),
-    /// Remove a line
-    Remove(String),
-    /// Context line (unchanged)
-    Context(String),
-}
-
-/// A chunk represents a continuous section of changes in a file
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Chunk {
-    /// Starting line in the original file (0-based)
-    pub old_start: usize,
-    /// Number of lines in the original file
-    pub old_lines: usize,
-    /// Starting line in the new file (0-based)
-    pub new_start: usize,
-    /// Number of lines in the new file
-    pub new_lines: usize,
-    /// The operations in this chunk
-    pub operations: Vec<Operation>,
+    #[error("Could not parse number '{value}' for {field}: {source}")]
+    InvalidNumberFormat {
+        value: String,
+        field: String,
+        #[source]
+        source: std::num::ParseIntError,
+    },
 }
 
 #[cfg(test)]
+mod test_utils {
+    pub(crate) fn load_fixture(name: &str) -> String {
+        let path = format!("fixtures/code/{}", name);
+        std::fs::read_to_string(path).unwrap()
+    }
+}
+#[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::differ::DiffAlgorithmType;
+    use crate::{DiffAlgorithm, PatchAlgorithm};
+
+    // Bring necessary items into scope for the test
+    use super::{patcher::Patcher, Differ, Error};
 
     #[test]
-    fn test_integration() {
-        let old = "line1\nline2\nline3\nline4";
-        let new = "line1\nline2 modified\nline3\nline4";
+    fn test_integration_diff_and_patch() -> Result<(), Error> {
+        let old_content = "line1
+line2
+line3
+line4";
+        let new_content = "line1
+line2 modified
+line3
+line4";
 
-        // Generate a patch
-        let differ = Differ::new(old, new, DiffAlgorithmType::Myers);
+        // Arrange: Generate a patch
+        let differ = Differ::new(old_content, new_content);
         let patch = differ.generate();
 
-        // Apply the patch
+        // Act: Apply the patch
         let patcher = Patcher::new(patch);
-        let result = patcher.apply(old, false).unwrap();
-        assert_eq!(result, new);
+        let actual_content = patcher.apply(old_content, false)?;
+
+        // Assert: Check if the patched content matches the new content
+        assert_eq!(actual_content, new_content);
+        Ok(())
     }
 }

@@ -4,6 +4,7 @@ use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 use tempfile::TempDir;
+use tracing::debug;
 
 // Helper function to get the path to the fixtures directory
 fn fixtures_path() -> PathBuf {
@@ -112,7 +113,7 @@ fn apply_and_verify_patch(
     // Debug info: Print first patch details
     if !updated_patch.patches.is_empty() {
         let first_patch = &updated_patch.patches[0];
-        println!(
+        debug!(
             "First patch: {} -> {}",
             first_patch.old_file, first_patch.new_file
         );

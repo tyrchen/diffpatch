@@ -1,7 +1,4 @@
-use diffpatch::{
-    differ::{DiffAlgorithmType, Differ},
-    MultifilePatch,
-};
+use diffpatch::{differ::Differ, DiffAlgorithm, MultifilePatch, PatchAlgorithm, Patcher};
 use divan::{black_box, Bencher};
 use std::collections::HashMap;
 
@@ -25,11 +22,18 @@ fn simulate_multifile_patch(
 
     for patch in patches {
         if let Some(content) = files.get(&patch.old_file) {
-            let patcher = diffpatch::Patcher::new(patch.clone());
+            let patcher = Patcher::new(patch.clone());
             if let Ok(new_content) = patcher.apply(content, false) {
+                // Determine if it's a new file or deletion based on patch paths
+                let is_new = patch.old_file == "/dev/null" || patch.old_file.ends_with("/dev/null");
+                let is_deleted =
+                    patch.new_file == "/dev/null" || patch.new_file.ends_with("/dev/null");
+
                 result.push(diffpatch::PatchedFile {
                     path: patch.new_file.clone(),
                     content: new_content,
+                    is_new,
+                    is_deleted,
                 });
             }
         }
@@ -71,7 +75,7 @@ fn generate_multi_file_data(file_count: usize) -> (HashMap<String, String>, Mult
         let modified: String = modified_chars.into_iter().collect();
 
         // Create patch
-        let differ = Differ::new(&original, &modified, DiffAlgorithmType::Myers);
+        let differ = Differ::new(&original, &modified);
         let mut patch = differ.generate();
 
         // Set file paths
@@ -141,7 +145,7 @@ fn multi_patch_creation(bencher: Bencher, file_count: usize) {
         let mut patches = Vec::new();
 
         for (filename, original, modified) in &file_pairs {
-            let differ = Differ::new(original, modified, DiffAlgorithmType::Myers);
+            let differ = Differ::new(original, modified);
             let mut patch = differ.generate();
 
             // Set file paths

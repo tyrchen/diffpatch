@@ -1,6 +1,5 @@
 use anyhow::Result;
-use diffpatch::differ::DiffAlgorithmType;
-use diffpatch::{Differ, Patch, Patcher};
+use diffpatch::{DiffAlgorithm, Differ, Patch, PatchAlgorithm, Patcher};
 use std::fs;
 use std::path::Path;
 
@@ -27,7 +26,7 @@ fn single_file_example() -> Result<()> {
     println!("{}", modified);
 
     // Generate a patch
-    let differ = Differ::new(original, modified, DiffAlgorithmType::Myers);
+    let differ = Differ::new(original, modified);
     let patch = differ.generate();
 
     println!("\n=== Generated Patch ===");
@@ -71,7 +70,7 @@ fn single_file_example() -> Result<()> {
 }
 
 fn multi_file_example() -> Result<()> {
-    use diffpatch::{MultifilePatch, MultifilePatcher};
+    use diffpatch::{ApplyResult, MultifilePatch, MultifilePatcher};
 
     // Setup example directory structure
     let examples_dir = Path::new("examples");
@@ -99,12 +98,12 @@ fn multi_file_example() -> Result<()> {
     let file2_modified = "This is file 2\nwith different content\nthat has been changed.";
 
     // Create patches for each file
-    let differ1 = Differ::new(file1_original, file1_modified, DiffAlgorithmType::Myers);
+    let differ1 = Differ::new(file1_original, file1_modified);
     let mut patch1 = differ1.generate();
     patch1.old_file = file1_path.to_str().unwrap().to_string();
     patch1.new_file = file1_path.to_str().unwrap().to_string();
 
-    let differ2 = Differ::new(file2_original, file2_modified, DiffAlgorithmType::Myers);
+    let differ2 = Differ::new(file2_original, file2_modified);
     let mut patch2 = differ2.generate();
     patch2.old_file = file2_path.to_str().unwrap().to_string();
     patch2.new_file = file2_path.to_str().unwrap().to_string();
@@ -125,13 +124,42 @@ fn multi_file_example() -> Result<()> {
     println!("Created multi-file patch at: {:?}", patch_path);
 
     // Apply the multi-file patch
-    let multi_patcher = MultifilePatcher::new(multi_patch);
-    let patched_files = multi_patcher.apply_and_write(false)?;
+    let multi_patcher = MultifilePatcher::new(multi_patch.clone()); // Clone for reverse patch later
+    let results = multi_patcher.apply_and_write(false)?;
 
-    println!("\nPatched {} files:", patched_files.len());
-    for file in &patched_files {
-        println!("- {}", file);
+    println!("\nPatch application results:");
+    let mut applied_count = 0;
+    let mut failed_count = 0;
+    for result in &results {
+        match result {
+            ApplyResult::Applied(file) => {
+                println!(
+                    "  - Applied: {} {}",
+                    file.path,
+                    if file.is_new { "(new)" } else { "" }
+                );
+                applied_count += 1;
+            }
+            ApplyResult::Deleted(path) => {
+                println!("  - Deleted: {}", path);
+                // Might count deletes separately if needed
+            }
+            ApplyResult::Skipped(reason) => {
+                println!("  - Skipped: {}", reason);
+            }
+            ApplyResult::Failed(path, error) => {
+                println!("  - Failed: {} - {}", path, error);
+                failed_count += 1;
+            }
+        }
     }
+    if failed_count > 0 {
+        anyhow::bail!(
+            "{} patches failed to apply during initial application.",
+            failed_count
+        );
+    }
+    println!("Applied/modified {} files.", applied_count);
 
     // Verify the changes
     let file1_new_content = fs::read_to_string(&file1_path)?;
@@ -148,7 +176,6 @@ fn multi_file_example() -> Result<()> {
     println!("{}", file2_new_content);
 
     // Now apply the patch in reverse to revert changes
-    let multi_patch = MultifilePatch::parse_from_file(&patch_path)?;
     let multi_patcher = MultifilePatcher::new(multi_patch);
     multi_patcher.apply_and_write(true)?;
 

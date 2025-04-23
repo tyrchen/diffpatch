@@ -1,10 +1,9 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
-use diffpatch::differ::DiffAlgorithmType;
-use diffpatch::{Differ, MultifilePatch, MultifilePatcher, Patch, Patcher};
-
+use diffpatch::{patcher::Patcher, ApplyResult, Differ, MultifilePatch, MultifilePatcher, Patch};
+use diffpatch::{DiffAlgorithm, PatchAlgorithm};
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Parser)]
 #[command(version, about = "A tool for generating and applying patches")]
@@ -78,86 +77,130 @@ fn main() -> Result<()> {
             new,
             output,
             context,
-        } => {
-            let old_content = fs::read_to_string(&old)?;
-            let new_content = fs::read_to_string(&new)?;
-
-            let differ = Differ::new(&old_content, &new_content, DiffAlgorithmType::Myers)
-                .context_lines(context);
-            let mut patch = differ.generate();
-
-            // Set filenames based on the paths
-            patch.old_file = old
-                .file_name()
-                .and_then(|name| name.to_str())
-                .unwrap_or("original")
-                .to_string();
-
-            patch.new_file = new
-                .file_name()
-                .and_then(|name| name.to_str())
-                .unwrap_or("modified")
-                .to_string();
-
-            let result = patch.to_string();
-
-            match output {
-                Some(path) => fs::write(path, result)?,
-                None => println!("{}", result),
-            }
-        }
-
+        } => handle_generate(old, new, output, context),
         Commands::Apply {
-            patch: patch_path,
+            patch,
             file,
             output,
             reverse,
-        } => {
-            let patch_content = fs::read_to_string(&patch_path)?;
-            let file_content = fs::read_to_string(&file)?;
-
-            // Parse the patch
-            let patch = Patch::parse(&patch_content)?;
-
-            // Apply the patch
-            let patcher = Patcher::new(patch);
-            let result = patcher.apply(&file_content, reverse)?;
-
-            match output {
-                Some(path) => fs::write(path, result)?,
-                None => println!("{}", result),
-            }
-        }
-
+        } => handle_apply(patch, file, output, reverse),
         Commands::ApplyMulti {
-            patch: patch_path,
+            patch,
             directory,
             reverse,
-        } => {
-            // Change to the specified directory if provided
-            let original_dir = if let Some(dir) = directory {
-                let current_dir = std::env::current_dir()?;
-                std::env::set_current_dir(&dir)?;
-                Some(current_dir)
-            } else {
-                None
-            };
+        } => handle_apply_multi(patch, directory, reverse),
+    }
+}
 
-            // Parse and apply the multifile patch
-            let multifile_patch = MultifilePatch::parse_from_file(patch_path)?;
-            let patcher = MultifilePatcher::new(multifile_patch);
-            let written_files = patcher.apply_and_write(reverse)?;
+// Helper function to get filename string or a default
+fn get_filename_str(path: &Path, default: &str) -> String {
+    path.file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or(default)
+        .to_string()
+}
 
-            println!("Successfully updated {} files:", written_files.len());
-            for file in written_files {
-                println!("  {}", file);
+// Helper function to write output to file or stdout
+fn write_output(output_path: Option<PathBuf>, content: &str) -> Result<()> {
+    match output_path {
+        Some(path) => fs::write(&path, content)
+            .with_context(|| format!("Failed to write output to file: {:?}", path)),
+        None => {
+            println!("{}", content);
+            Ok(()) // Ensure Ok(()) is returned for the None case
+        }
+    }
+}
+
+fn handle_generate(
+    old_path: PathBuf,
+    new_path: PathBuf,
+    output_path: Option<PathBuf>,
+    context: usize,
+) -> Result<()> {
+    let old_content = fs::read_to_string(&old_path)
+        .with_context(|| format!("Failed to read old file: {:?}", old_path))?;
+    let new_content = fs::read_to_string(&new_path)
+        .with_context(|| format!("Failed to read new file: {:?}", new_path))?;
+
+    let differ = Differ::new(&old_content, &new_content).context_lines(context);
+    let mut patch = differ.generate();
+
+    patch.old_file = get_filename_str(&old_path, "original");
+    patch.new_file = get_filename_str(&new_path, "modified");
+
+    let result = patch.to_string();
+    write_output(output_path, &result)
+}
+
+fn handle_apply(
+    patch_path: PathBuf,
+    file_path: PathBuf,
+    output_path: Option<PathBuf>,
+    reverse: bool,
+) -> Result<()> {
+    let patch_content = fs::read_to_string(&patch_path)
+        .with_context(|| format!("Failed to read patch file: {:?}", patch_path))?;
+    let file_content = fs::read_to_string(&file_path)
+        .with_context(|| format!("Failed to read target file: {:?}", file_path))?;
+
+    let patch = Patch::parse(&patch_content)?;
+    let patcher = Patcher::new(patch);
+    let result = patcher.apply(&file_content, reverse)?;
+
+    write_output(output_path, &result)
+}
+
+fn handle_apply_multi(
+    patch_path: PathBuf,
+    directory: Option<PathBuf>,
+    reverse: bool,
+) -> Result<()> {
+    let root_dir = directory.unwrap_or(std::env::current_dir()?);
+    let multifile_patch = MultifilePatch::parse_from_file(&patch_path)
+        .with_context(|| format!("Failed to parse multi-file patch: {:?}", patch_path))?;
+    let patcher = MultifilePatcher::with_root(multifile_patch, &root_dir);
+    let results = patcher.apply_and_write(reverse)?;
+
+    let mut applied_count = 0;
+    let mut deleted_count = 0;
+    let mut skipped_count = 0;
+    let mut failed_count = 0;
+
+    println!("Patch application results:");
+    for result in results {
+        match result {
+            ApplyResult::Applied(file) => {
+                println!(
+                    "  Applied: {} {}",
+                    file.path,
+                    if file.is_new { "(new file)" } else { "" }
+                );
+                applied_count += 1;
             }
-
-            // Change back to the original directory if we changed it
-            if let Some(dir) = original_dir {
-                std::env::set_current_dir(dir)?;
+            ApplyResult::Deleted(path) => {
+                println!("  Deleted: {}", path);
+                deleted_count += 1;
+            }
+            ApplyResult::Skipped(reason) => {
+                println!("  Skipped: {}", reason);
+                skipped_count += 1;
+            }
+            ApplyResult::Failed(path, error) => {
+                eprintln!("  Failed: {} - {}", path, error);
+                failed_count += 1;
             }
         }
+    }
+
+    println!("\nSummary:");
+    println!("  {} applied/modified", applied_count);
+    println!("  {} deleted", deleted_count);
+    println!("  {} skipped", skipped_count);
+    println!("  {} failed", failed_count);
+
+    if failed_count > 0 {
+        anyhow::bail!("{} patches failed to apply.", failed_count);
     }
 
     Ok(())
