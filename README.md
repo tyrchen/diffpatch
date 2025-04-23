@@ -116,32 +116,6 @@ fn main() {
 }
 ```
 
-## CLI Usage
-
-### Generate
-
-```bash
-diffpatch generate original_file.txt modified_file.txt --output patch.diff
-```
-
-### Apply
-
-```bash
-diffpatch apply patch.diff original_file.txt --output result.txt
-```
-
-### Apply a Patch in Reverse
-
-```bash
-diffpatch apply patch.diff modified_file.txt --output original.txt --reverse
-```
-
-### Apply a Multi-file Patch
-
-```bash
-diffpatch apply-multi changes.patch [--directory /path/to/target] [--reverse]
-```
-
 ## Data Structures
 
 - `Patch`: Represents a complete diff between two files

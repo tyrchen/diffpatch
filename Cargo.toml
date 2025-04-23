@@ -1,31 +1,23 @@
 [package]
 name = "diffpatch"
 version = "0.1.0"
-authors = ["Your Name <your.email@example.com>"]
-edition = "2021"
+authors = ["Tyr Chen <tyr.chen@gmail.com>"]
+edition = "2024"
 license = "MIT"
-documentation = "https://docs.rs/"
-repository = "https://github.com/TODO"
-homepage = "https://github.com/TODO"
-description = "A library for parsing, creating, and applying Git-style diffs"
+documentation = "https://docs.rs/diffpatch"
+repository = "https://github.com/tyrchen/diffpatch"
+homepage = "https://github.com/tyrchen/diffpatch"
+description = "diffpatch is a Rust library for generating and applying Git-style unified diff patches."
 readme = "README.md"
 categories = ["development-tools"]
 keywords = ["diff", "patch", "git", "text", "comparison"]
 
-[features]
-default = ["cli"]
-cli = ["clap", "tracing-subscriber"]
-
 [dependencies]
 anyhow = "1.0"
-clap = { version = "4.5", features = ["derive"], optional = true }
 levenshtein = "1.0"
 similar = "2.7.0"
 thiserror = "2.0"
 tracing = "0.1.41"
-tracing-subscriber = { version = "0.3.19", features = [
-  "env-filter",
-], optional = true }
 
 [dev-dependencies]
 divan = "0.1.21"
@@ -35,11 +27,6 @@ tempfile = "3.19"
 
 [lints.clippy]
 needless-range-loop = "allow"
-
-[[bin]]
-name = "diffpatch"
-path = "src/main.rs"
-required-features = ["cli"]
 
 [[bench]]
 name = "differ"

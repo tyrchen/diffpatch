@@ -114,33 +114,6 @@ fn main() {
 
     println!("Updated files: {:?}", written_files);
 }
-```
-
-## CLI使用
-
-### 生成
-
-```bash
-diffpatch generate original_file.txt modified_file.txt --output patch.diff
-```
-
-### 应用
-
-```bash
-diffpatch apply patch.diff original_file.txt --output result.txt
-```
-
-### 反向应用补丁
-
-```bash
-diffpatch apply patch.diff modified_file.txt --output original.txt --reverse
-```
-
-### 应用多文件补丁
-
-```bash
-diffpatch apply-multi changes.patch [--directory /path/to/target] [--reverse]
-```
 
 ## 数据结构
 
