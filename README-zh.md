@@ -24,13 +24,7 @@
 
 ```toml
 [dependencies]
-patcher = { version = "0.1.0", default-features = false }
-```
-
-或安装CLI工具：
-
-```bash
-cargo install patcher
+patcher = "0.2.1"
 ```
 
 ## 库使用

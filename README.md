@@ -24,13 +24,7 @@ Add to your Cargo.toml:
 
 ```toml
 [dependencies]
-patcher = { version = "0.1.0", default-features = false }
-```
-
-Or install the CLI tool:
-
-```bash
-cargo install patcher
+patcher = "0.2.1"
 ```
 
 ## Library Usage
