@@ -6,7 +6,7 @@
 
 ## 教程
 
-参见[教程](./tutorial/zh/index.md)。
+参见[教程](./tutorial/zh/README.md)。
 
 ## 特性
 

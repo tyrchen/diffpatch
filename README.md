@@ -2,11 +2,11 @@
 
 # Diffpatch
 
-A Rust library for generating and applying Git-style unified diff patches.
+A Rust library for generating and applying Git-style unified diff patches. See [中文说明](README-zh.md).
 
 ## Tutorial
 
-See [Tutorial](./tutorial/en/index.md).
+See [Tutorial](./tutorial/en/README.md).
 
 ## Features
 
