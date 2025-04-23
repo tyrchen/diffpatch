@@ -1,3 +1,4 @@
+use std::fmt;
 use std::fs::{self, File};
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
@@ -82,7 +83,10 @@ impl MultifilePatch {
                                 // Provide more context in the warning
                                 warn!(
                                     "Warning: Skipping malformed patch section (lines {}-{}): {}\n--- Patch Content Start ---\n{}\n--- Patch Content End ---",
-                                    start + 1, i, e, patch_content
+                                    start + 1,
+                                    i,
+                                    e,
+                                    patch_content
                                 );
                             }
                         }
@@ -103,7 +107,10 @@ impl MultifilePatch {
                     Err(e) => {
                         warn!(
                             "Warning: Skipping malformed patch section at end of file (lines {}-{}): {}\n--- Patch Content Start ---\n{}\n--- Patch Content End ---",
-                            start + 1, lines.len(), e, patch_content
+                            start + 1,
+                            lines.len(),
+                            e,
+                            patch_content
                         );
                     }
                 }
@@ -113,10 +120,10 @@ impl MultifilePatch {
         // Check for validity: If the input wasn't empty but no patches were parsed,
         // determine if it was due to missing 'diff' lines or parsing errors.
         if patches.is_empty() && !content.trim().is_empty() {
-            if !content.lines().any(|l| l.starts_with("diff --git ")) {
+            if !content.lines().any(|l| l.starts_with("diff ")) {
                 // Content exists but no 'diff --git' lines found
                 return Err(Error::InvalidPatchFormat(
-                    "No patch sections found starting with 'diff --git '".to_string(),
+                    "No patch sections found starting with 'diff '".to_string(),
                 ));
             } else {
                 // Found 'diff --git' lines, but all sections failed parsing (warnings printed above)
@@ -349,6 +356,15 @@ impl MultifilePatcher {
         }
 
         Ok(final_results)
+    }
+}
+
+impl fmt::Display for MultifilePatch {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for patch in &self.patches {
+            writeln!(f, "{}", patch)?;
+        }
+        Ok(())
     }
 }
 

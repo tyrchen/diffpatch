@@ -96,10 +96,10 @@ impl DiffAlgorithm for SimilarDiffer<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::PatchAlgorithm;
     use crate::differ::{DiffAlgorithmType, Differ};
     use crate::patcher::Patcher;
     use crate::test_utils::load_fixture;
-    use crate::PatchAlgorithm;
 
     fn run_diff_and_apply(old: &str, new: &str, context: usize) -> String {
         let base_differ =
@@ -180,6 +180,14 @@ mod tests {
     fn test_similar_fixture_simple() {
         let old = load_fixture("simple_before.rs");
         let new = load_fixture("simple_after.rs");
+        let result = run_diff_and_apply(&old, &new, 3);
+        assert_eq!(result, new);
+    }
+
+    #[test]
+    fn test_similar_fixture_python() {
+        let old = load_fixture("old.py");
+        let new = load_fixture("new.py");
         let result = run_diff_and_apply(&old, &new, 3);
         assert_eq!(result, new);
     }

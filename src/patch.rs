@@ -185,8 +185,8 @@ impl Patch {
                     } else {
                         // Strict: No prefix is an error
                         return Err(Error::InvalidPatchFormat(format!(
-                           "Line {}: Line without context/add/remove prefix found in chunk body: \"{}\"",
-                           current_line_num, op_line
+                            "Line {}: Line without context/add/remove prefix found in chunk body: \"{}\"",
+                            current_line_num, op_line
                         )));
                     }
                 }
@@ -298,11 +298,7 @@ fn parse_range(range_str: &str, header: &str) -> Result<(usize, usize), Error> {
     let count = match parts.len() {
         1 => {
             // Format like "-1" or "+1" means 1 line affected unless start is 0
-            if start == 0 {
-                0
-            } else {
-                1
-            }
+            if start == 0 { 0 } else { 1 }
         }
         2 => {
             // Format like "-1,5" or "+1,6"
@@ -313,8 +309,8 @@ fn parse_range(range_str: &str, header: &str) -> Result<(usize, usize), Error> {
     };
 
     if start == 0 && count > 0 { // e.g. --- /dev/null, @@ -0,0 +1,5 @@
-         // Allow count > 0 only if start is also > 0, or if start is 0 (empty file case)
-         // This condition is slightly redundant with the start==0 check in match arms, but provides clarity
+        // Allow count > 0 only if start is also > 0, or if start is 0 (empty file case)
+        // This condition is slightly redundant with the start==0 check in match arms, but provides clarity
     } else if start > 0 && count == 0 {
         return Err(Error::InvalidChunkHeader {
             header: header.to_string(),
@@ -341,6 +337,8 @@ impl fmt::Display for Patch {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(preamble) = &self.preamble {
             writeln!(f, "{}", preamble)?;
+        } else {
+            writeln!(f, "diff --git a/{} b/{}", self.old_file, self.new_file)?;
         }
         // Always use the a/ b/ prefixes for consistency, even if not present in parsed paths
         writeln!(f, "--- a/{}", self.old_file)?;

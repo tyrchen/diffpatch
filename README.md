@@ -38,7 +38,7 @@ cargo install diffpatch
 ### Generate a Patch
 
 ```rust
-use diffpatch::Differ;
+use diffpatch::{DiffAlgorithm, Differ};
 
 fn main() {
     let old_content = "line1\nline2\nline3\nline4";
@@ -54,7 +54,7 @@ fn main() {
 ### Apply a Patch
 
 ```rust
-use diffpatch::{Differ, Patcher};
+use diffpatch::{DiffAlgorithm, Differ, PatchAlgorithm, Patcher};
 
 fn main() {
     let old_content = "line1\nline2\nline3\nline4";
@@ -97,53 +97,6 @@ fn main() {
 }
 ```
 
-### Using the Myers Diff Algorithm
-
-The library provides a low-level Myers diff algorithm implementation that can be used with any data type:
-
-```rust
-use diffpatch::{Diff, myers_diff};
-
-// Implement the Diff trait for your custom differ
-struct MyDiffer;
-
-impl Diff for MyDiffer {
-    type Error = String;
-
-    fn equal(&mut self, old_idx: usize, new_idx: usize, count: usize) -> Result<(), Self::Error> {
-        println!("Equal: {} elements at old index {} and new index {}", count, old_idx, new_idx);
-        Ok(())
-    }
-
-    fn delete(&mut self, old_idx: usize, count: usize, new_idx: usize) -> Result<(), Self::Error> {
-        println!("Delete: {} elements at old index {}", count, old_idx);
-        Ok(())
-    }
-
-    fn insert(&mut self, old_idx: usize, new_idx: usize, count: usize) -> Result<(), Self::Error> {
-        println!("Insert: {} elements at new index {}", count, new_idx);
-        Ok(())
-    }
-
-    fn finish(&mut self) -> Result<(), Self::Error> {
-        println!("Diff complete");
-        Ok(())
-    }
-}
-
-fn main() {
-    let old = vec![1, 2, 3, 4, 5];
-    let new = vec![1, 2, 10, 4, 8];
-
-    let mut differ = MyDiffer;
-
-    // Calculate diff between the two sequences
-    myers_diff(&mut differ, &old, 0, old.len(), &new, 0, new.len()).unwrap();
-}
-```
-
-See the [myers_diff.rs](examples/myers_diff.rs) example for a more complete demonstration.
-
 ### Working with Multi-file Patches
 
 ```rust
@@ -161,32 +114,6 @@ fn main() {
 
     println!("Updated files: {:?}", written_files);
 }
-```
-
-## CLI Usage
-
-### Generate a Patch
-
-```bash
-diffpatch generate --old original_file.txt --new modified_file.txt --output patch.diff
-```
-
-### Apply a Patch
-
-```bash
-diffpatch apply --patch patch.diff --file original_file.txt --output result.txt
-```
-
-### Apply a Patch in Reverse
-
-```bash
-diffpatch apply --patch patch.diff --file modified_file.txt --output original.txt --reverse
-```
-
-### Apply a Multi-file Patch
-
-```bash
-diffpatch apply-multi --patch changes.patch [--directory /path/to/target] [--reverse]
 ```
 
 ## Data Structures

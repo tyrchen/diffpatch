@@ -1,8 +1,8 @@
 use diffpatch::{
-    differ::{DiffAlgorithmType, Differ},
     DiffAlgorithm,
+    differ::{DiffAlgorithmType, Differ},
 };
-use divan::{black_box, Bencher};
+use divan::{Bencher, black_box};
 
 #[global_allocator]
 static ALLOC: divan::AllocProfiler = divan::AllocProfiler::system();

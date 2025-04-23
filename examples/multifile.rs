@@ -7,24 +7,23 @@ fn main() -> Result<()> {
     println!("=== Multi-File Patch Example ===");
 
     // Setup example directory structure
-    let examples_dir = Path::new("examples");
-    let tmp_dir = examples_dir.join("tmp");
+    let tmp_dir = Path::new("/tmp/diffpatch-examples");
 
     if !tmp_dir.exists() {
-        fs::create_dir_all(&tmp_dir)?;
+        fs::create_dir_all(tmp_dir)?;
     }
 
     // Create test files
-    create_test_files(&tmp_dir)?;
+    create_test_files(tmp_dir)?;
 
     // Create multi-file patch
-    let patch_path = create_multi_file_patch(&tmp_dir)?;
+    let patch_path = create_multi_file_patch(tmp_dir)?;
 
     // Apply the patch to modify files
-    apply_patch(&patch_path, false)?;
+    apply_patch(tmp_dir, &patch_path, false)?;
 
     // Apply the patch in reverse to restore original files
-    apply_patch(&patch_path, true)?;
+    apply_patch(tmp_dir, &patch_path, true)?;
 
     Ok(())
 }
@@ -34,9 +33,18 @@ fn create_test_files(dir: &Path) -> Result<()> {
 
     // Define some test files
     let files = [
-        ("config.json", "{\n  \"name\": \"diffpatch\",\n  \"version\": \"0.1.0\",\n  \"debug\": false\n}"),
-        ("README.txt", "# Test Project\n\nThis is a test project for diffpatch.\n\nMore information will be added later."),
-        ("src/main.rs", "fn main() {\n    println!(\"Hello, world!\");\n}"),
+        (
+            "config.json",
+            "{\n  \"name\": \"diffpatch\",\n  \"version\": \"0.1.0\",\n  \"debug\": false\n}",
+        ),
+        (
+            "README.txt",
+            "# Test Project\n\nThis is a test project for diffpatch.\n\nMore information will be added later.",
+        ),
+        (
+            "src/main.rs",
+            "fn main() {\n    println!(\"Hello, world!\");\n}",
+        ),
     ];
 
     // Create each file
@@ -66,17 +74,17 @@ fn create_multi_file_patch(dir: &Path) -> Result<std::path::PathBuf> {
         (
             "config.json",
             "{\n  \"name\": \"diffpatch\",\n  \"version\": \"0.1.0\",\n  \"debug\": false\n}",
-            "{\n  \"name\": \"diffpatch\",\n  \"version\": \"0.2.0\",\n  \"debug\": true,\n  \"logLevel\": \"info\"\n}"
+            "{\n  \"name\": \"diffpatch\",\n  \"version\": \"0.2.0\",\n  \"debug\": true,\n  \"logLevel\": \"info\"\n}",
         ),
         (
             "README.txt",
             "# Test Project\n\nThis is a test project for diffpatch.\n\nMore information will be added later.",
-            "# Diffpatch Test\n\nThis is a test project showcasing the diffpatch library.\n\nSee examples for more details."
+            "# Diffpatch Test\n\nThis is a test project showcasing the diffpatch library.\n\nSee examples for more details.",
         ),
         (
             "src/main.rs",
             "fn main() {\n    println!(\"Hello, world!\");\n}",
-            "fn main() {\n    println!(\"Hello, diffpatch!\");\n    println!(\"Version 0.2.0\");\n}"
+            "fn main() {\n    println!(\"Hello, diffpatch!\");\n    println!(\"Version 0.2.0\");\n}",
         ),
     ];
 
@@ -100,21 +108,15 @@ fn create_multi_file_patch(dir: &Path) -> Result<std::path::PathBuf> {
 
     // Save the patch to a file
     let patch_path = dir.join("changes.patch");
-    let patch_content = multi_patch
-        .patches
-        .iter()
-        .map(|p| p.to_string())
-        .collect::<Vec<_>>()
-        .join("\n");
 
-    fs::write(&patch_path, patch_content)?;
+    fs::write(&patch_path, multi_patch.to_string())?;
 
     println!("Multi-file patch created at: {:?}", patch_path);
 
     Ok(patch_path)
 }
 
-fn apply_patch(patch_path: &Path, reverse: bool) -> Result<()> {
+fn apply_patch(root: &Path, patch_path: &Path, reverse: bool) -> Result<()> {
     let action = if reverse { "Reverting" } else { "Applying" };
     println!("\n{} multi-file patch...", action);
 
@@ -128,7 +130,7 @@ fn apply_patch(patch_path: &Path, reverse: bool) -> Result<()> {
     }
 
     // Apply the patch
-    let multi_patcher = MultifilePatcher::new(multi_patch);
+    let multi_patcher = MultifilePatcher::with_root(multi_patch, root);
     let results = multi_patcher.apply_and_write(reverse)?;
 
     println!(

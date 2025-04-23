@@ -38,7 +38,7 @@ cargo install diffpatch
 ### 生成补丁
 
 ```rust
-use diffpatch::Differ;
+use diffpatch::{DiffAlgorithm, Differ};
 
 fn main() {
     let old_content = "line1\nline2\nline3\nline4";
@@ -54,7 +54,7 @@ fn main() {
 ### 应用补丁
 
 ```rust
-use diffpatch::{Differ, Patcher};
+use diffpatch::{DiffAlgorithm, Differ, PatchAlgorithm, Patcher};
 
 fn main() {
     let old_content = "line1\nline2\nline3\nline4";
@@ -97,53 +97,6 @@ fn main() {
 }
 ```
 
-### 使用Myers差异算法
-
-该库提供了一个低级Myers差异算法实现，可用于任何数据类型：
-
-```rust
-use diffpatch::{Diff, myers_diff};
-
-// 为自定义比较器实现Diff特性
-struct MyDiffer;
-
-impl Diff for MyDiffer {
-    type Error = String;
-
-    fn equal(&mut self, old_idx: usize, new_idx: usize, count: usize) -> Result<(), Self::Error> {
-        println!("Equal: {} elements at old index {} and new index {}", count, old_idx, new_idx);
-        Ok(())
-    }
-
-    fn delete(&mut self, old_idx: usize, count: usize, new_idx: usize) -> Result<(), Self::Error> {
-        println!("Delete: {} elements at old index {}", count, old_idx);
-        Ok(())
-    }
-
-    fn insert(&mut self, old_idx: usize, new_idx: usize, count: usize) -> Result<(), Self::Error> {
-        println!("Insert: {} elements at new index {}", count, new_idx);
-        Ok(())
-    }
-
-    fn finish(&mut self) -> Result<(), Self::Error> {
-        println!("Diff complete");
-        Ok(())
-    }
-}
-
-fn main() {
-    let old = vec![1, 2, 3, 4, 5];
-    let new = vec![1, 2, 10, 4, 8];
-
-    let mut differ = MyDiffer;
-
-    // 计算两个序列之间的差异
-    myers_diff(&mut differ, &old, 0, old.len(), &new, 0, new.len()).unwrap();
-}
-```
-
-查看[myers_diff.rs](examples/myers_diff.rs)示例以获取更完整的演示。
-
 ### 处理多文件补丁
 
 ```rust
@@ -161,33 +114,6 @@ fn main() {
 
     println!("Updated files: {:?}", written_files);
 }
-```
-
-## CLI使用
-
-### 生成补丁
-
-```bash
-diffpatch generate --old original_file.txt --new modified_file.txt --output patch.diff
-```
-
-### 应用补丁
-
-```bash
-diffpatch apply --patch patch.diff --file original_file.txt --output result.txt
-```
-
-### 反向应用补丁
-
-```bash
-diffpatch apply --patch patch.diff --file modified_file.txt --output original.txt --reverse
-```
-
-### 应用多文件补丁
-
-```bash
-diffpatch apply-multi --patch changes.patch [--directory /path/to/target] [--reverse]
-```
 
 ## 数据结构
 
@@ -197,7 +123,6 @@ diffpatch apply-multi --patch changes.patch [--directory /path/to/target] [--rev
 - `MultifilePatch`：多个文件的补丁集合
 - `MultifilePatcher`：将多个补丁应用到文件
 - `Diff`：用于实现自定义差异逻辑的特性
-- `myers_diff`：将高效的Myers算法应用于自定义序列类型的函数
 
 ## 限制
 

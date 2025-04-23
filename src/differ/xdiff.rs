@@ -63,7 +63,7 @@ impl<'a> XDiffDiffer<'a> {
         // Allocate K vectors (forward and backward paths)
         let ndiags = old_len + new_len + 3;
         let k_vec_size = 2 * ndiags + 2; // Total size needed
-                                         // kvd: K-Vector for Diagonals (stores furthest point reached on each diagonal)
+        // kvd: K-Vector for Diagonals (stores furthest point reached on each diagonal)
         let mut kvd = vec![0isize; k_vec_size]; // Store as isize to handle potential large coords
 
         // Calculate the offset for indexing K-vectors (diagonals can be negative)
@@ -675,7 +675,7 @@ impl DiffAlgorithm for XDiffDiffer<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{differ::DiffAlgorithmType, test_utils::load_fixture, PatchAlgorithm, Patcher};
+    use crate::{PatchAlgorithm, Patcher, differ::DiffAlgorithmType, test_utils::load_fixture};
 
     // Keeping existing tests - they should still pass if the algorithm is correct,
     // though the exact chunking might differ slightly from the previous LCS impl.
@@ -805,6 +805,17 @@ mod tests {
     fn test_xdiff_fixture_simple() {
         let old = load_fixture("simple_before.rs");
         let new = load_fixture("simple_after.rs");
+        let differ = Differ::new_with_algorithm(&old, &new, DiffAlgorithmType::XDiff);
+        let xdiff = XDiffDiffer::new(&differ);
+        let patch = xdiff.generate();
+        let result = Patcher::new(patch).apply(&old, false).unwrap();
+        assert_eq!(result, new);
+    }
+
+    #[test]
+    fn test_xdiff_fixture_python() {
+        let old = load_fixture("old.py");
+        let new = load_fixture("new.py");
         let differ = Differ::new_with_algorithm(&old, &new, DiffAlgorithmType::XDiff);
         let xdiff = XDiffDiffer::new(&differ);
         let patch = xdiff.generate();

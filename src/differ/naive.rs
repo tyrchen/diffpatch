@@ -110,7 +110,7 @@ impl DiffAlgorithm for NaiveDiffer<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{differ::DiffAlgorithmType, test_utils::load_fixture, PatchAlgorithm, Patcher};
+    use crate::{PatchAlgorithm, Patcher, differ::DiffAlgorithmType, test_utils::load_fixture};
 
     #[test]
     fn test_simple_diff() {
@@ -177,6 +177,17 @@ mod tests {
     fn test_naive_fixture_simple() {
         let old = load_fixture("simple_before.rs");
         let new = load_fixture("simple_after.rs");
+        let differ = Differ::new_with_algorithm(&old, &new, DiffAlgorithmType::Naive);
+        let naive = NaiveDiffer::new(&differ);
+        let patch = naive.generate();
+        let result = Patcher::new(patch).apply(&old, false).unwrap();
+        assert_eq!(result, new);
+    }
+
+    #[test]
+    fn test_naive_fixture_python() {
+        let old = load_fixture("old.py");
+        let new = load_fixture("new.py");
         let differ = Differ::new_with_algorithm(&old, &new, DiffAlgorithmType::Naive);
         let naive = NaiveDiffer::new(&differ);
         let patch = naive.generate();
