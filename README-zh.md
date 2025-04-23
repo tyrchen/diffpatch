@@ -2,40 +2,40 @@
 
 # Diffpatch
 
-A Rust library for generating and applying Git-style unified diff patches.
+一个用于生成和应用Git风格统一差异补丁的Rust库。
 
-## Tutorial
+## 教程
 
-See [Tutorial](./tutorial/en/index.md).
+参见[教程](./tutorial/zh/index.md)。
 
-## Features
+## 特性
 
-- Generate patches from original and modified content
-- Apply patches to content, both forward and in reverse
-- Parse patches from text format
-- Support for multi-file patches
-- Command-line interface for generating and applying patches
-- Efficient Myers diff algorithm implementation
-- Customizable diff implementation for any data type
+- 从原始内容和修改后的内容生成补丁
+- 向前和向后应用补丁到内容
+- 从文本格式解析补丁
+- 支持多文件补丁
+- 用于生成和应用补丁的命令行界面
+- 高效的Myers差异算法实现
+- 可自定义的差异实现，适用于任何数据类型
 
-## Installation
+## 安装
 
-Add to your Cargo.toml:
+添加到您的Cargo.toml：
 
 ```toml
 [dependencies]
 diffpatch = { version = "0.1.0", default-features = false }
 ```
 
-Or install the CLI tool:
+或安装CLI工具：
 
 ```bash
 cargo install diffpatch
 ```
 
-## Library Usage
+## 库使用
 
-### Generate a Patch
+### 生成补丁
 
 ```rust
 use diffpatch::Differ;
@@ -51,7 +51,7 @@ fn main() {
 }
 ```
 
-### Apply a Patch
+### 应用补丁
 
 ```rust
 use diffpatch::{Differ, Patcher};
@@ -60,11 +60,11 @@ fn main() {
     let old_content = "line1\nline2\nline3\nline4";
     let new_content = "line1\nline2 modified\nline3\nline4";
 
-    // Generate a patch
+    // 生成补丁
     let differ = Differ::new(old_content, new_content);
     let patch = differ.generate();
 
-    // Apply it to the original content
+    // 将补丁应用到原始内容
     let patcher = Patcher::new(patch);
     let result = patcher.apply(old_content, false).unwrap();
 
@@ -72,7 +72,7 @@ fn main() {
 }
 ```
 
-### Parse a Patch
+### 解析补丁
 
 ```rust
 use diffpatch::Patch;
@@ -97,14 +97,14 @@ fn main() {
 }
 ```
 
-### Using the Myers Diff Algorithm
+### 使用Myers差异算法
 
-The library provides a low-level Myers diff algorithm implementation that can be used with any data type:
+该库提供了一个低级Myers差异算法实现，可用于任何数据类型：
 
 ```rust
 use diffpatch::{Diff, myers_diff};
 
-// Implement the Diff trait for your custom differ
+// 为自定义比较器实现Diff特性
 struct MyDiffer;
 
 impl Diff for MyDiffer {
@@ -137,25 +137,25 @@ fn main() {
 
     let mut differ = MyDiffer;
 
-    // Calculate diff between the two sequences
+    // 计算两个序列之间的差异
     myers_diff(&mut differ, &old, 0, old.len(), &new, 0, new.len()).unwrap();
 }
 ```
 
-See the [myers_diff.rs](examples/myers_diff.rs) example for a more complete demonstration.
+查看[myers_diff.rs](examples/myers_diff.rs)示例以获取更完整的演示。
 
-### Working with Multi-file Patches
+### 处理多文件补丁
 
 ```rust
 use diffpatch::{MultifilePatch, MultifilePatcher};
 use std::path::Path;
 
 fn main() {
-    // Parse a multi-file patch from a file
+    // 从文件解析多文件补丁
     let patch_path = Path::new("changes.patch");
     let multipatch = MultifilePatch::parse_from_file(patch_path).unwrap();
 
-    // Apply all patches to files in the current directory
+    // 将所有补丁应用到当前目录中的文件
     let patcher = MultifilePatcher::new(multipatch);
     let written_files = patcher.apply_and_write(false).unwrap();
 
@@ -163,50 +163,50 @@ fn main() {
 }
 ```
 
-## CLI Usage
+## CLI使用
 
-### Generate a Patch
+### 生成补丁
 
 ```bash
 diffpatch generate --old original_file.txt --new modified_file.txt --output patch.diff
 ```
 
-### Apply a Patch
+### 应用补丁
 
 ```bash
 diffpatch apply --patch patch.diff --file original_file.txt --output result.txt
 ```
 
-### Apply a Patch in Reverse
+### 反向应用补丁
 
 ```bash
 diffpatch apply --patch patch.diff --file modified_file.txt --output original.txt --reverse
 ```
 
-### Apply a Multi-file Patch
+### 应用多文件补丁
 
 ```bash
 diffpatch apply-multi --patch changes.patch [--directory /path/to/target] [--reverse]
 ```
 
-## Data Structures
+## 数据结构
 
-- `Patch`: Represents a complete diff between two files
-- `Chunk`: Represents a contiguous section of changes
-- `Operation`: Represents a single line in a diff (addition, deletion, or context)
-- `MultifilePatch`: Collection of patches for multiple files
-- `MultifilePatcher`: Applies multiple patches to files
-- `Diff`: Trait for implementing custom diff logic
-- `myers_diff`: Function to apply the efficient Myers algorithm to custom sequence types
+- `Patch`：表示两个文件之间的完整差异
+- `Chunk`：表示连续的更改部分
+- `Operation`：表示差异中的单行（添加、删除或上下文）
+- `MultifilePatch`：多个文件的补丁集合
+- `MultifilePatcher`：将多个补丁应用到文件
+- `Diff`：用于实现自定义差异逻辑的特性
+- `myers_diff`：将高效的Myers算法应用于自定义序列类型的函数
 
-## Limitations
+## 限制
 
-- Limited support for various diff formats (focuses on git-style diffs)
+- 对各种差异格式的支持有限（专注于git风格的差异）
 
-## License
+## 许可证
 
-This project is distributed under the terms of MIT.
+本项目根据MIT条款分发。
 
-See [LICENSE](LICENSE.md) for details.
+详情参见[LICENSE](LICENSE.md)。
 
-Copyright 2025 Tyr Chen
+版权所有 2025 Tyr Chen
