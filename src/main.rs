@@ -3,7 +3,7 @@ use clap::{Parser, Subcommand};
 use diffpatch::{patcher::Patcher, ApplyResult, Differ, MultifilePatch, MultifilePatcher, Patch};
 use diffpatch::{DiffAlgorithm, PatchAlgorithm};
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 #[derive(Parser)]
 #[command(version, about = "A tool for generating and applying patches")]
@@ -17,11 +17,9 @@ enum Commands {
     /// Generate a patch from two files
     Generate {
         /// The original file
-        #[arg(short = 'i', long)]
         old: PathBuf,
 
         /// The new file
-        #[arg(short, long)]
         new: PathBuf,
 
         /// The output patch file (defaults to stdout if not provided)
@@ -36,11 +34,9 @@ enum Commands {
     /// Apply a patch to a file
     Apply {
         /// The patch file to apply
-        #[arg(short, long)]
         patch: PathBuf,
 
         /// The file to apply the patch to
-        #[arg(short, long)]
         file: PathBuf,
 
         /// The output file (defaults to stdout if not provided)
@@ -55,7 +51,6 @@ enum Commands {
     /// Apply a multi-file patch
     ApplyMulti {
         /// The patch file to apply
-        #[arg(short, long)]
         patch: PathBuf,
 
         /// The directory to apply patches in (defaults to current directory)
@@ -92,14 +87,6 @@ fn main() -> Result<()> {
     }
 }
 
-// Helper function to get filename string or a default
-fn get_filename_str(path: &Path, default: &str) -> String {
-    path.file_name()
-        .and_then(|name| name.to_str())
-        .unwrap_or(default)
-        .to_string()
-}
-
 // Helper function to write output to file or stdout
 fn write_output(output_path: Option<PathBuf>, content: &str) -> Result<()> {
     match output_path {
@@ -124,10 +111,7 @@ fn handle_generate(
         .with_context(|| format!("Failed to read new file: {:?}", new_path))?;
 
     let differ = Differ::new(&old_content, &new_content).context_lines(context);
-    let mut patch = differ.generate();
-
-    patch.old_file = get_filename_str(&old_path, "original");
-    patch.new_file = get_filename_str(&new_path, "modified");
+    let patch = differ.generate();
 
     let result = patch.to_string();
     write_output(output_path, &result)

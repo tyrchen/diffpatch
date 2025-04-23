@@ -341,6 +341,8 @@ impl fmt::Display for Patch {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(preamble) = &self.preamble {
             writeln!(f, "{}", preamble)?;
+        } else {
+            writeln!(f, "diff --git a/{} b/{}", self.old_file, self.new_file)?;
         }
         // Always use the a/ b/ prefixes for consistency, even if not present in parsed paths
         writeln!(f, "--- a/{}", self.old_file)?;

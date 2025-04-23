@@ -185,6 +185,14 @@ mod tests {
     }
 
     #[test]
+    fn test_similar_fixture_python() {
+        let old = load_fixture("old.py");
+        let new = load_fixture("new.py");
+        let result = run_diff_and_apply(&old, &new, 3);
+        assert_eq!(result, new);
+    }
+
+    #[test]
     fn test_similar_fixture_complex() {
         let old = load_fixture("complex_before.rs");
         let new = load_fixture("complex_after.rs");

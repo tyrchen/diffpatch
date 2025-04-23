@@ -813,6 +813,17 @@ mod tests {
     }
 
     #[test]
+    fn test_xdiff_fixture_python() {
+        let old = load_fixture("old.py");
+        let new = load_fixture("new.py");
+        let differ = Differ::new_with_algorithm(&old, &new, DiffAlgorithmType::XDiff);
+        let xdiff = XDiffDiffer::new(&differ);
+        let patch = xdiff.generate();
+        let result = Patcher::new(patch).apply(&old, false).unwrap();
+        assert_eq!(result, new);
+    }
+
+    #[test]
     fn test_xdiff_fixture_complex() {
         let old = load_fixture("complex_before.rs");
         let new = load_fixture("complex_after.rs");
