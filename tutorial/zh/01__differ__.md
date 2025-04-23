@@ -1,19 +1,19 @@
 # Chapter 1: 差异生成器 (Differ)
 
 
-欢迎来到 `diffpatch` 库的入门教程！在这个系列中，我们将一步步探索如何比较文本差异以及如何应用这些差异。
+欢迎来到 `patcher` 库的入门教程！在这个系列中，我们将一步步探索如何比较文本差异以及如何应用这些差异。
 
 想象一下，你正在参与一个项目，你修改了一个重要的配置文件。几天后，你想不起来具体改了哪些地方，或者你想把你的修改分享给你的同事，但又不想发送整个文件，只想发送改动的部分。这时你该怎么办呢？
 
-`diffpatch` 库就能帮你解决这个问题。而我们今天要认识的第一个核心组件，就是 **差异生成器 (Differ)**。
+`patcher` 库就能帮你解决这个问题。而我们今天要认识的第一个核心组件，就是 **差异生成器 (Differ)**。
 
 ## 什么是差异生成器 (Differ)？
 
-**差异生成器 (Differ)** 是 `diffpatch` 库的核心组件之一。它的主要工作就是比较两个文本（比如，同一个文件的两个不同版本）并找出它们之间的不同之处。
+**差异生成器 (Differ)** 是 `patcher` 库的核心组件之一。它的主要工作就是比较两个文本（比如，同一个文件的两个不同版本）并找出它们之间的不同之处。
 
 你可以把它想象成一位非常细心的编辑。这位编辑拿到两份稿件（原始版本和修改后的版本），然后逐行仔细比对，标记出所有增加、删除或者修改的内容。
 
-最后，这位编辑会生成一份详细的“修订说明”，这份说明精确地描述了如何将原始版本变成修改后的版本。这份“修订说明”在 `diffpatch` 库中，我们称之为 [**补丁 (Patch)**](02_补丁__patch__.md)。我们将在下一章详细介绍它。
+最后，这位编辑会生成一份详细的“修订说明”，这份说明精确地描述了如何将原始版本变成修改后的版本。这份“修订说明”在 `patcher` 库中，我们称之为 [**补丁 (Patch)**](02_补丁__patch__.md)。我们将在下一章详细介绍它。
 
 不同的差异算法（比如 Myers、XDiff 等）就像是这位编辑使用的不同审阅方法，它们各有优劣，但最终目的都是找出差异。
 
@@ -24,7 +24,7 @@
 让我们看一个简单的例子：
 
 ```rust
-use diffpatch::Differ; // 引入 Differ
+use patcher::Differ; // 引入 Differ
 
 fn main() {
     // 准备原始文本和修改后的文本
@@ -50,7 +50,7 @@ fn main() {
 
 **代码解释:**
 
-1.  **`use diffpatch::Differ;`**: 首先，我们需要从 `diffpatch` 库中引入 `Differ`。
+1.  **`use patcher::Differ;`**: 首先，我们需要从 `patcher` 库中引入 `Differ`。
 2.  **准备文本**: 我们定义了两个字符串变量 `original_text` 和 `modified_text`，分别代表修改前和修改后的内容。注意其中的 `\n` 代表换行符。
 3.  **`Differ::new(...)`**: 我们使用 `Differ::new()` 函数创建了一个 `Differ` 实例，把原始文本和修改后文本传递给它。这就像是把两份稿件交给了编辑。
 4.  **`differ.generate()`**: 我们调用 `differ` 实例的 `generate()` 方法。这就像是告诉编辑：“开始比对，并生成修订说明吧！”。这个方法会返回一个 `Patch` 对象，里面包含了所有差异信息。
@@ -60,17 +60,17 @@ fn main() {
 
 ## 差异算法：不同的编辑方法
 
-就像编辑可能有不同的审阅风格和技巧一样，`Differ` 也可以使用不同的**算法**来查找差异。`diffpatch` 库内置了几种常见的差异算法：
+就像编辑可能有不同的审阅风格和技巧一样，`Differ` 也可以使用不同的**算法**来查找差异。`patcher` 库内置了几种常见的差异算法：
 
 *   **Myers**: 一种非常流行且效率较高的算法，通常能在性能和差异结果质量之间取得良好平衡。
-*   **XDiff**: `libxdiff` 库使用的算法，经过优化，通常速度很快，也是 `diffpatch` 的默认算法。
+*   **XDiff**: `libxdiff` 库使用的算法，经过优化，通常速度很快，也是 `patcher` 的默认算法。
 *   **Naive**: 一种非常简单（朴素）的算法，容易理解，但在处理大型或复杂差异时效率较低。
 *   **Similar**: 使用 `similar` 库提供的算法（如 Patience 算法），有时能产生更符合人类直觉的差异结果。
 
 默认情况下，`Differ::new()` 使用 `XDiff` 算法。如果你想尝试其他算法，可以使用 `Differ::new_with_algorithm()`：
 
 ```rust
-use diffpatch::{Differ, differ::DiffAlgorithmType}; // 引入需要的类型
+use patcher::{Differ, differ::DiffAlgorithmType}; // 引入需要的类型
 
 fn main() {
     let original_text = "版本 1";
@@ -98,7 +98,7 @@ fn main() {
 
 **代码解释:**
 
-1.  **`use diffpatch::{Differ, differ::DiffAlgorithmType};`**: 我们额外引入了 `DiffAlgorithmType` 这个枚举类型，它用来指定要使用的算法。
+1.  **`use patcher::{Differ, differ::DiffAlgorithmType};`**: 我们额外引入了 `DiffAlgorithmType` 这个枚举类型，它用来指定要使用的算法。
 2.  **`Differ::new_with_algorithm(...)`**: 这次我们使用这个函数来创建 `Differ`。除了原始文本和修改后文本，我们还传入了第三个参数：`DiffAlgorithmType::Myers` 或 `DiffAlgorithmType::Naive`，明确告诉 `Differ` 使用哪种算法。
 
 对于初学者来说，通常不需要关心具体的算法选择，默认的 `XDiff` 算法在大多数情况下都表现良好。
@@ -178,7 +178,7 @@ impl DiffAlgorithm for Differ {
 
 ## 总结
 
-在本章中，我们认识了 `diffpatch` 世界的第一个核心概念：**差异生成器 (Differ)**。
+在本章中，我们认识了 `patcher` 世界的第一个核心概念：**差异生成器 (Differ)**。
 
 *   我们知道了 `Differ` 的作用就像一个细心的编辑，负责比较两个文本并找出差异。
 *   我们学习了如何使用 `Differ::new()` 和 `differ.generate()` 来生成描述这些差异的“修订说明”。

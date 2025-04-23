@@ -1,6 +1,6 @@
-![](https://github.com/tyrchen/diffpatch/workflows/build/badge.svg)
+![](https://github.com/tyrchen/patcher/workflows/build/badge.svg)
 
-# Diffpatch
+# Patcher
 
 A Rust library for generating and applying Git-style unified diff patches. See [中文说明](README-zh.md).
 
@@ -24,13 +24,13 @@ Add to your Cargo.toml:
 
 ```toml
 [dependencies]
-diffpatch = { version = "0.1.0", default-features = false }
+patcher = { version = "0.1.0", default-features = false }
 ```
 
 Or install the CLI tool:
 
 ```bash
-cargo install diffpatch
+cargo install patcher
 ```
 
 ## Library Usage
@@ -38,7 +38,7 @@ cargo install diffpatch
 ### Generate a Patch
 
 ```rust
-use diffpatch::{DiffAlgorithm, Differ};
+use patcher::{DiffAlgorithm, Differ};
 
 fn main() {
     let old_content = "line1\nline2\nline3\nline4";
@@ -54,7 +54,7 @@ fn main() {
 ### Apply a Patch
 
 ```rust
-use diffpatch::{DiffAlgorithm, Differ, PatchAlgorithm, Patcher};
+use patcher::{DiffAlgorithm, Differ, PatchAlgorithm, Patcher};
 
 fn main() {
     let old_content = "line1\nline2\nline3\nline4";
@@ -75,7 +75,7 @@ fn main() {
 ### Parse a Patch
 
 ```rust
-use diffpatch::Patch;
+use patcher::Patch;
 
 fn main() {
     let patch_content = "\
@@ -100,7 +100,7 @@ fn main() {
 ### Working with Multi-file Patches
 
 ```rust
-use diffpatch::{MultifilePatch, MultifilePatcher};
+use patcher::{MultifilePatch, MultifilePatcher};
 use std::path::Path;
 
 fn main() {

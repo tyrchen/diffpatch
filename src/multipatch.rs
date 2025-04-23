@@ -213,7 +213,7 @@ impl MultifilePatcher {
 
             // Determine the actual file path to read content from.
             let source_path = self.resolve_path(source_path_str);
-            let target_path_str = target_path_str.to_string(); // Target path as string for PatchedFile
+            let target_path = self.resolve_path(target_path_str); // Target path as string for PatchedFile
 
             // Read the source file content.
             let source_content_result = if is_new_file {
@@ -235,7 +235,7 @@ impl MultifilePatcher {
                             } else {
                                 // Otherwise, it's a modification or creation.
                                 ApplyResult::Applied(PatchedFile {
-                                    path: target_path_str,
+                                    path: target_path.display().to_string(),
                                     content: new_content,
                                     is_new: is_new_file, // is_new determined earlier
                                     is_deleted: false,
@@ -247,7 +247,7 @@ impl MultifilePatcher {
                             // Report failure associated with the *target* path, as that's the intended outcome.
                             // Using source_path_str here is misleading if apply fails.
                             // Example: Apply fails for "a -> b", report should relate to "b".
-                            ApplyResult::Failed(target_path_str, e)
+                            ApplyResult::Failed(target_path.display().to_string(), e)
                         }
                     }
                 }
@@ -277,7 +277,7 @@ impl MultifilePatcher {
                     // Other I/O error reading the file.
                     // Report failure associated with the *target* path, as failure to read source
                     // prevents the target operation.
-                    ApplyResult::Failed(target_path_str, Error::IoError(err))
+                    ApplyResult::Failed(target_path.display().to_string(), Error::IoError(err))
                 }
             };
             results.push(result);
@@ -558,7 +558,7 @@ index def..000
         let target_path_abs = temp_path.join(new_file_name);
         match &results[0] {
             ApplyResult::Applied(file) => {
-                assert_eq!(file.path, new_file_name);
+                assert_eq!(file.path, target_path_abs.display().to_string());
                 assert!(file.is_new);
                 assert!(!file.is_deleted);
                 assert!(target_path_abs.exists(), "File should have been created");
@@ -687,8 +687,7 @@ index def..000
         let temp_dir = tempdir()?;
         let temp_path = temp_dir.path();
         let file_name = "target_file.txt";
-        let dir_path = temp_path.join(file_name); // Create a directory where the file should be
-        fs::create_dir(&dir_path)?;
+        let file_path = temp_path.join(file_name); // Create a directory where the file should be
 
         let new_content = "b";
         // Directly create a patch for a new file (without using Differ)
@@ -715,7 +714,8 @@ index def..000
             // Check that the failed path matches the intended target file name
             ApplyResult::Failed(path, err) => {
                 assert_eq!(
-                    path, file_name,
+                    path,
+                    &file_path.display().to_string(),
                     "The path in the Failed result should match the target filename"
                 );
                 assert!(

@@ -1,4 +1,4 @@
-# DiffPatch Patchers
+# Patchers
 
 This module contains implementations of patching algorithms that apply patches to text content.
 
@@ -31,8 +31,8 @@ Both patchers implement the `PatchAlgorithm` trait, providing a consistent inter
 ## Usage
 
 ```rust
-use diffpatch::{Differ, Patch};
-use diffpatch::patcher::{PatchAlgorithm, NaivePatcher, SimilarPatcher};
+use patcher::{Differ, Patch};
+use patcher::patcher::{PatchAlgorithm, NaivePatcher, SimilarPatcher};
 
 // Generate a patch
 let old_content = "line1\nline2\nline3";

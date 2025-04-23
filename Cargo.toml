@@ -1,13 +1,13 @@
 [package]
-name = "diffpatch"
+name = "patcher"
 version = "0.2.0"
 authors = ["Tyr Chen <tyr.chen@gmail.com>"]
 edition = "2024"
 license = "MIT"
-documentation = "https://docs.rs/diffpatch"
-repository = "https://github.com/tyrchen/diffpatch"
-homepage = "https://github.com/tyrchen/diffpatch"
-description = "diffpatch is a Rust library for generating and applying Git-style unified diff patches."
+documentation = "https://docs.rs/patcher"
+repository = "https://github.com/tyrchen/patcher"
+homepage = "https://github.com/tyrchen/patcher"
+description = "patcher is a Rust library for generating and applying Git-style unified diff patches."
 readme = "README.md"
 categories = ["development-tools"]
 keywords = ["diff", "patch", "git", "text", "comparison"]

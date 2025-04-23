@@ -2,7 +2,7 @@
 
 In [Chapter 5: Patcher](05_patcher_.md), we learned how to use a `Patcher` to apply the changes described in a single [Patch](02_patch_.md) object to a single file. That's great for isolated changes!
 
-But what about real-world projects? Often, a single feature or bug fix involves changing *multiple* files. For example, you might update a Rust source file (`src/lib.rs`), its corresponding test file (`tests/lib_test.rs`), and the project's documentation (`README.md`). Tools like `git diff` produce a single output that bundles *all* these changes together. How can `diffpatch` handle this?
+But what about real-world projects? Often, a single feature or bug fix involves changing *multiple* files. For example, you might update a Rust source file (`src/lib.rs`), its corresponding test file (`tests/lib_test.rs`), and the project's documentation (`README.md`). Tools like `git diff` produce a single output that bundles *all* these changes together. How can `patcher` handle this?
 
 That's where `MultifilePatch` comes in!
 
@@ -50,7 +50,7 @@ index abc..def 100644
 *   **Standard Patch Sections:** Each section between the `diff --git` lines follows the same format we saw for a single [Patch](02_patch_.md) (with `---`, `+++`, `@@ ... @@`, and operation lines `+`, `-`, ` `).
 *   **Parsing:** The `MultifilePatch` knows how to read this whole text, split it at the `diff --git` lines, and parse each section into an individual [Patch](02_patch_.md) object.
 
-## How `diffpatch` Represents a MultifilePatch in Code
+## How `patcher` Represents a MultifilePatch in Code
 
 The Rust structure for `MultifilePatch` is straightforward – it mainly holds a list of `Patch` objects.
 
@@ -81,7 +81,7 @@ The most common way to get a `MultifilePatch` is by parsing a string or a file c
 Let's see how you can parse the example text format from above:
 
 ```rust
-use diffpatch::{MultifilePatch, Error}; // Import MultifilePatch and Error
+use patcher::{MultifilePatch, Error}; // Import MultifilePatch and Error
 
 fn main() -> Result<(), Error> {
     let multi_diff_content = r#"
@@ -190,7 +190,7 @@ This shows how `MultifilePatch::parse` orchestrates the process, using the singl
 
 ## Conclusion
 
-You've now learned about `MultifilePatch`, the `diffpatch` structure for handling changes across multiple files. It acts as a container, like a cookbook, holding a list of individual [Patch](02_patch_.md) objects (recipes), one for each affected file. You saw how it can parse standard multi-file diff formats (like `git diff` output) using `MultifilePatch::parse()` and how you can inspect the resulting collection of patches.
+You've now learned about `MultifilePatch`, the `patcher` structure for handling changes across multiple files. It acts as a container, like a cookbook, holding a list of individual [Patch](02_patch_.md) objects (recipes), one for each affected file. You saw how it can parse standard multi-file diff formats (like `git diff` output) using `MultifilePatch::parse()` and how you can inspect the resulting collection of patches.
 
 This is essential for working with real-world changes that often span several files in a project.
 

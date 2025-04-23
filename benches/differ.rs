@@ -1,4 +1,4 @@
-use diffpatch::{
+use patcher::{
     DiffAlgorithm,
     differ::{DiffAlgorithmType, Differ},
 };

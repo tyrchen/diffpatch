@@ -1,5 +1,5 @@
-use diffpatch::{DiffAlgorithm, MultifilePatch, PatchAlgorithm, Patcher, differ::Differ};
 use divan::{Bencher, black_box};
+use patcher::{DiffAlgorithm, MultifilePatch, PatchAlgorithm, Patcher, differ::Differ};
 use std::collections::HashMap;
 
 #[global_allocator]
@@ -16,8 +16,8 @@ const CHANGE_PERCENTAGE: f64 = 0.05;
 // For benchmark purposes, we need to simulate the file patching process without actual filesystem
 fn simulate_multifile_patch(
     files: &HashMap<String, String>,
-    patches: &Vec<diffpatch::Patch>,
-) -> Vec<diffpatch::PatchedFile> {
+    patches: &Vec<patcher::Patch>,
+) -> Vec<patcher::PatchedFile> {
     let mut result = Vec::new();
 
     for patch in patches {
@@ -29,7 +29,7 @@ fn simulate_multifile_patch(
                 let is_deleted =
                     patch.new_file == "/dev/null" || patch.new_file.ends_with("/dev/null");
 
-                result.push(diffpatch::PatchedFile {
+                result.push(patcher::PatchedFile {
                     path: patch.new_file.clone(),
                     content: new_content,
                     is_new,

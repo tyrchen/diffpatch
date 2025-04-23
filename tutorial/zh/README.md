@@ -1,4 +1,4 @@
-# Tutorial: diffpatch
+# Tutorial: patcher
 
 这个项目提供了一套用于**比较**文件内容、生成*差异*（称为**补丁**）以及将这些差异应用回文件的工具。
 

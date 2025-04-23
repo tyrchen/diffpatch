@@ -1,6 +1,6 @@
 # Chapter 1: Differ
 
-Welcome to the `diffpatch` tutorial! Let's start our journey by understanding the first core concept: the `Differ`.
+Welcome to the `patcher` tutorial! Let's start our journey by understanding the first core concept: the `Differ`.
 
 Imagine you're writing an important document, maybe an essay or a piece of code. You have an original version (`version_A.txt`) and you make some changes to create a new version (`version_B.txt`). Now, you want to know *exactly* what changed between these two versions. Did you add a paragraph? Fix a typo? Delete a sentence? Figuring this out manually can be tedious, especially for large files.
 
@@ -45,7 +45,7 @@ Suppose we have these two versions of a short text:
 Here's how you'd use the `Differ` to find the changes:
 
 ```rust
-use diffpatch::Differ; // Import the Differ
+use patcher::Differ; // Import the Differ
 
 fn main() {
     // 1. Define the original and modified text
@@ -85,7 +85,7 @@ Imagine the `Differ` trying to find the *longest sequence of lines* that are *th
 
 **Different Algorithms:**
 
-There isn't just one way to perform this comparison. `diffpatch` supports several different algorithms (like Myers, XDiff, Naive, Similar). Why? Because each algorithm has different strengths:
+There isn't just one way to perform this comparison. `patcher` supports several different algorithms (like Myers, XDiff, Naive, Similar). Why? Because each algorithm has different strengths:
 
 *   Some are faster but might produce slightly larger patches (less efficient descriptions of changes).
 *   Others might be slower but produce the smallest possible patch (the most efficient description).
@@ -195,7 +195,7 @@ For example, if `XDiff` is selected, the call goes to `XDiffDiffer::new(self).ge
 
 ## Conclusion
 
-You've learned about the `Differ`, the component in `diffpatch` responsible for comparing two texts and figuring out what changed. It acts like a proofreader, analyzing the original and modified versions line by line. By using clever algorithms, it produces a detailed description of the differences.
+You've learned about the `Differ`, the component in `patcher` responsible for comparing two texts and figuring out what changed. It acts like a proofreader, analyzing the original and modified versions line by line. By using clever algorithms, it produces a detailed description of the differences.
 
 The output of the `Differ`'s hard work is a crucial object called a `Patch`. This `Patch` contains all the information needed to transform the original text into the modified one (or vice-versa!).
 

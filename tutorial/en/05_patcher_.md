@@ -53,7 +53,7 @@ Let's use the same example text and the [Patch](02_patch_.md) we've been working
 Here's how you use the `Patcher` in Rust:
 
 ```rust
-use diffpatch::{Differ, Patcher, Patch}; // Import Patcher and Patch
+use patcher::{Differ, Patcher, Patch}; // Import Patcher and Patch
 use std::fs;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -220,7 +220,7 @@ You've now met the `Patcher`, the component that brings a [Patch](02_patch_.md) 
 
 So far, we've focused on changes within a *single* file. But what if you have changes across *multiple* files, like in a typical software project? How do you represent and apply those?
 
-In the next chapter, we'll explore how `diffpatch` handles this with the [MultifilePatch](06_multifilepatch_.md) concept.
+In the next chapter, we'll explore how `patcher` handles this with the [MultifilePatch](06_multifilepatch_.md) concept.
 
 Next: [Chapter 6: MultifilePatch](06_multifilepatch_.md)
 

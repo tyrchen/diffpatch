@@ -1,4 +1,4 @@
-use diffpatch::{MultifilePatch, MultifilePatcher};
+use patcher::{MultifilePatch, MultifilePatcher};
 use git2::Repository;
 use std::env;
 use std::fs;

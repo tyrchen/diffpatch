@@ -27,7 +27,7 @@ Let's say you have a patch file named `project_updates.patch` that contains chan
 Here's how you would typically use the `MultifilePatcher`:
 
 ```rust
-use diffpatch::{MultifilePatch, MultifilePatcher, Error};
+use patcher::{MultifilePatch, MultifilePatcher, Error};
 use std::path::Path;
 
 fn main() -> Result<(), Error> {
