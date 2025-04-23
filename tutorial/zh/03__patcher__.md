@@ -11,7 +11,7 @@
 
 ## 什么是补丁应用器 (Patcher)？
 
-**补丁应用器 (Patcher)** 是 `diffpatch` 库中负责读取 [补丁 (Patch)](02_补丁__patch__.md) 文件（或者更准确地说，是 `Patch` 对象）并将其描述的更改应用到目标文本（通常是原始文件内容）上的组件。
+**补丁应用器 (Patcher)** 是 `patcher` 库中负责读取 [补丁 (Patch)](02_补丁__patch__.md) 文件（或者更准确地说，是 `Patch` 对象）并将其描述的更改应用到目标文本（通常是原始文件内容）上的组件。
 
 把它想象成一位技艺精湛的工匠。这位工匠手里拿着一张蓝图（`Patch` 对象），这张蓝图详细描述了如何修改一件原始的作品（原始文件内容）。工匠会严格按照蓝图上的指示：
 
@@ -40,7 +40,7 @@
 让我们看一个简单的例子：
 
 ```rust
-use diffpatch::{Differ, Patch, Patcher}; // 引入 Differ, Patch, Patcher
+use patcher::{Differ, Patch, Patcher}; // 引入 Differ, Patch, Patcher
 
 fn main() {
     // 假设我们有原始文本和修改后文本
@@ -90,7 +90,7 @@ fn main() {
 
 **代码解释:**
 
-1.  **`use diffpatch::{Differ, Patch, Patcher};`**: 引入我们需要的类型。
+1.  **`use patcher::{Differ, Patch, Patcher};`**: 引入我们需要的类型。
 2.  **生成 `Patch`**: 我们首先用 `Differ` 生成了一个 `Patch` 对象，就像前几章做的那样。请记住，这个 `patch` 对象也可以通过 `Patch::parse()` 从一个补丁字符串或文件内容解析得到。
 3.  **`Patcher::new(patch)`**: 我们用 `Patch` 对象创建了一个 `Patcher` 实例。这就像把“修订说明书”交给了“工匠”。
 4.  **`patcher.apply(original_text, false)`**: 这是核心方法调用。
@@ -108,15 +108,15 @@ fn main() {
 
 就像 [差异生成器 (Differ)](01_差异生成器__differ__.md) 可以使用不同的算法来找出差异一样，`Patcher` 也可以使用不同的**算法**或**策略**来应用补丁。这在处理“不完美”的情况时尤其有用，比如原始文件在你拿到补丁后又被轻微修改过，导致补丁中的上下文信息不能完全精确匹配。
 
-`diffpatch` 库提供了几种不同的补丁应用算法，通过 `PatcherAlgorithm` 枚举来指定：
+`patcher` 库提供了几种不同的补丁应用算法，通过 `PatcherAlgorithm` 枚举来指定：
 
 *   **`Naive` (朴素算法)**: 这是最直接的实现。它严格按照 [补丁 (Patch)](02_补丁__patch__.md) 中的[变更块 (Chunk)](04_变更块__chunk__.md) 顺序进行应用。对于每个块，它会检查上下文行是否与输入文本**完全**匹配。如果不匹配，它会立即报错并停止。这种方法最简单，但也最“脆弱”，对输入文本的精确性要求最高。
-*   **`Similar` (相似算法，默认)**: 这是 `diffpatch` 的默认算法，它更加“智能”和“健壮”。当遇到上下文不完全匹配的情况时，它不会立刻放弃，而是会尝试进行**模糊匹配 (fuzzy matching)**。它会在预期位置附近的一小段范围 (`SEARCH_RANGE`) 内搜索，寻找与补丁中的上下文最相似的行。如果找到了足够相似的位置（基于某种相似度评分，如 Levenshtein 距离），它就会认为找到了正确的应用位置，并继续应用补丁。这使得 `Similar` 算法能够容忍原始文件的一些轻微变化（比如多一个空行，或者某些行的缩进/空格有变化），提高了补丁应用的成功率。
+*   **`Similar` (相似算法，默认)**: 这是 `patcher` 的默认算法，它更加“智能”和“健壮”。当遇到上下文不完全匹配的情况时，它不会立刻放弃，而是会尝试进行**模糊匹配 (fuzzy matching)**。它会在预期位置附近的一小段范围 (`SEARCH_RANGE`) 内搜索，寻找与补丁中的上下文最相似的行。如果找到了足够相似的位置（基于某种相似度评分，如 Levenshtein 距离），它就会认为找到了正确的应用位置，并继续应用补丁。这使得 `Similar` 算法能够容忍原始文件的一些轻微变化（比如多一个空行，或者某些行的缩进/空格有变化），提高了补丁应用的成功率。
 
 默认情况下，`Patcher::new()` 使用 `Similar` 算法。如果你想显式指定算法（比如，如果你需要严格的匹配行为，或者想对比不同算法的效果），可以使用 `Patcher::new_with_algorithm()`：
 
 ```rust
-use diffpatch::{Patcher, Patch, PatcherAlgorithm, Differ}; // 引入 PatcherAlgorithm
+use patcher::{Patcher, Patch, PatcherAlgorithm, Differ}; // 引入 PatcherAlgorithm
 
 fn main() {
     let old = "Line 1\nLine 2\nLine 3";
@@ -159,7 +159,7 @@ fn main() {
 
 **代码解释:**
 
-1.  **`use diffpatch::PatcherAlgorithm;`**: 引入 `PatcherAlgorithm` 枚举。
+1.  **`use patcher::PatcherAlgorithm;`**: 引入 `PatcherAlgorithm` 枚举。
 2.  **准备数据**: 我们准备了原始文本 `old`、新文本 `new`，以及一个与 `old` 略有不同的 `slightly_modified_old`（第二行多了空格）。然后基于 `old` 和 `new` 生成了 `patch`。
 3.  **`Patcher::new_with_algorithm(..., PatcherAlgorithm::Naive)`**: 我们创建了一个 `Patcher`，明确指定使用 `Naive` 算法。
 4.  **`naive_patcher.apply(...)`**: 我们尝试用 `Naive` 算法将补丁应用到 `slightly_modified_old` 上。由于 `Naive` 要求精确匹配，而补丁中的上下文行 `"Line 2"` 与实际的 `" Line 2 "` 不符，应用会失败。
@@ -288,7 +288,7 @@ impl PatchAlgorithm for Patcher {
 
 ## 总结
 
-在本章中，我们认识了 `diffpatch` 世界的“工匠”——**补丁应用器 (Patcher)**。
+在本章中，我们认识了 `patcher` 世界的“工匠”——**补丁应用器 (Patcher)**。
 
 *   我们知道了 `Patcher` 的核心作用是读取 [补丁 (Patch)](02_补丁__patch__.md)（修订说明书），并将其中的更改应用到原始文本上。
 *   我们学习了如何使用 `Patcher::new()` 创建实例，并通过调用 `patcher.apply()` 方法来应用补丁。

@@ -1,5 +1,5 @@
 use anyhow::Result;
-use diffpatch::{ApplyResult, DiffAlgorithm, Differ, MultifilePatch, MultifilePatcher};
+use patcher::{ApplyResult, DiffAlgorithm, Differ, MultifilePatch, MultifilePatcher};
 use std::fs;
 use std::path::Path;
 
@@ -7,7 +7,7 @@ fn main() -> Result<()> {
     println!("=== Multi-File Patch Example ===");
 
     // Setup example directory structure
-    let tmp_dir = Path::new("/tmp/diffpatch-examples");
+    let tmp_dir = Path::new("/tmp/patcher-examples");
 
     if !tmp_dir.exists() {
         fs::create_dir_all(tmp_dir)?;
@@ -35,11 +35,11 @@ fn create_test_files(dir: &Path) -> Result<()> {
     let files = [
         (
             "config.json",
-            "{\n  \"name\": \"diffpatch\",\n  \"version\": \"0.1.0\",\n  \"debug\": false\n}",
+            "{\n  \"name\": \"patcher\",\n  \"version\": \"0.1.0\",\n  \"debug\": false\n}",
         ),
         (
             "README.txt",
-            "# Test Project\n\nThis is a test project for diffpatch.\n\nMore information will be added later.",
+            "# Test Project\n\nThis is a test project for patcher.\n\nMore information will be added later.",
         ),
         (
             "src/main.rs",
@@ -73,18 +73,18 @@ fn create_multi_file_patch(dir: &Path) -> Result<std::path::PathBuf> {
     let changes = [
         (
             "config.json",
-            "{\n  \"name\": \"diffpatch\",\n  \"version\": \"0.1.0\",\n  \"debug\": false\n}",
-            "{\n  \"name\": \"diffpatch\",\n  \"version\": \"0.2.0\",\n  \"debug\": true,\n  \"logLevel\": \"info\"\n}",
+            "{\n  \"name\": \"patcher\",\n  \"version\": \"0.1.0\",\n  \"debug\": false\n}",
+            "{\n  \"name\": \"patcher\",\n  \"version\": \"0.2.0\",\n  \"debug\": true,\n  \"logLevel\": \"info\"\n}",
         ),
         (
             "README.txt",
-            "# Test Project\n\nThis is a test project for diffpatch.\n\nMore information will be added later.",
-            "# Diffpatch Test\n\nThis is a test project showcasing the diffpatch library.\n\nSee examples for more details.",
+            "# Test Project\n\nThis is a test project for patcher.\n\nMore information will be added later.",
+            "# Patcher Test\n\nThis is a test project showcasing the patcher library.\n\nSee examples for more details.",
         ),
         (
             "src/main.rs",
             "fn main() {\n    println!(\"Hello, world!\");\n}",
-            "fn main() {\n    println!(\"Hello, diffpatch!\");\n    println!(\"Version 0.2.0\");\n}",
+            "fn main() {\n    println!(\"Hello, patcher!\");\n    println!(\"Version 0.2.0\");\n}",
         ),
     ];
 

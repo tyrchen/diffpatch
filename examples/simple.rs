@@ -1,5 +1,5 @@
 use anyhow::Result;
-use diffpatch::{DiffAlgorithm, Differ, Patch, PatchAlgorithm, Patcher};
+use patcher::{DiffAlgorithm, Differ, Patch, PatchAlgorithm, Patcher};
 use std::fs;
 use std::path::Path;
 
@@ -70,7 +70,7 @@ fn single_file_example() -> Result<()> {
 }
 
 fn multi_file_example() -> Result<()> {
-    use diffpatch::{ApplyResult, MultifilePatch, MultifilePatcher};
+    use patcher::{ApplyResult, MultifilePatch, MultifilePatcher};
 
     // Setup example directory structure
     let examples_dir = Path::new("examples");

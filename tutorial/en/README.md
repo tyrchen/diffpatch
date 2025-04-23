@@ -1,4 +1,4 @@
-# Tutorial: diffpatch
+# Tutorial: patcher
 
 This project provides tools to **compare** two pieces of text (like files) to find the differences (*diffing*).
 It generates a structured list of changes called a **Patch**.

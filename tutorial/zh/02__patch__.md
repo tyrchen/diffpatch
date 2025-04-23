@@ -1,7 +1,7 @@
 # Chapter 2: 补丁 (Patch)
 
 
-在上一章 [第 1 章：差异生成器 (Differ)](01_差异生成器__differ__.md) 中，我们认识了 `diffpatch` 库的“编辑”——`Differ`，它负责找出两个文本文件之间的不同之处。我们看到 `differ.generate()` 方法最后返回了一个叫做 `patch` 的东西，并把它打印了出来。
+在上一章 [第 1 章：差异生成器 (Differ)](01_差异生成器__differ__.md) 中，我们认识了 `patcher` 库的“编辑”——`Differ`，它负责找出两个文本文件之间的不同之处。我们看到 `differ.generate()` 方法最后返回了一个叫做 `patch` 的东西，并把它打印了出来。
 
 但是，这个 `patch` 到底是什么呢？它有什么用？
 
@@ -20,7 +20,7 @@
 
 这个说明书通常遵循一种标准的格式，叫做 **“统一差异格式”（Unified Diff Format）**。这种格式被广泛应用于各种版本控制系统（如 Git）和开发工具中，因为它既能被人读懂，也能被程序精确解析。
 
-`diffpatch` 库的核心任务之一就是生成这种格式的补丁，并且能够解析这种格式的补丁。稍后，我们将看到另一个重要角色——[补丁应用器 (Patcher)](03_补丁应用器__patcher__.md)——如何读取这张“说明书”来执行实际的修改操作。
+`patcher` 库的核心任务之一就是生成这种格式的补丁，并且能够解析这种格式的补丁。稍后，我们将看到另一个重要角色——[补丁应用器 (Patcher)](03_补丁应用器__patcher__.md)——如何读取这张“说明书”来执行实际的修改操作。
 
 ## 理解补丁的“语言”：统一差异格式
 
@@ -77,7 +77,7 @@ let modified_text = "你好，世界！\n这是修改后的第一行。\n这是�
 
 ## 补丁在代码中的样子：`Patch` 结构体
 
-我们看到的文本格式的补丁是为了方便人类阅读和跨工具传输。在 `diffpatch` 的 Rust 代码内部，`Differ` 生成的 `patch` 实际上是一个结构化的 `Patch` 对象。
+我们看到的文本格式的补丁是为了方便人类阅读和跨工具传输。在 `patcher` 的 Rust 代码内部，`Differ` 生成的 `patch` 实际上是一个结构化的 `Patch` 对象。
 
 这个 `Patch` 结构体定义在 `src/patch.rs` 文件中，它大概长这样（简化版）：
 
@@ -137,7 +137,7 @@ pub enum Operation {
 当我们从 `differ.generate()` 获得 `patch` 对象后，就可以访问这些字段来获取结构化的差异信息：
 
 ```rust
-use diffpatch::Differ; // 引入 Differ
+use patcher::Differ; // 引入 Differ
 
 fn main() {
     let original_text = "你好，世界！\n这是第一行。\n这是第二行。";
@@ -165,9 +165,9 @@ fn main() {
         // 打印出具体操作
         for op in &first_chunk.operations {
             match op {
-                diffpatch::Operation::Context(line) => println!("    上下文: {}", line),
-                diffpatch::Operation::Remove(line) => println!("    删除(-): {}", line),
-                diffpatch::Operation::Add(line) => println!("    添加(+): {}", line),
+                patcher::Operation::Context(line) => println!("    上下文: {}", line),
+                patcher::Operation::Remove(line) => println!("    删除(-): {}", line),
+                patcher::Operation::Add(line) => println!("    添加(+): {}", line),
             }
         }
     }
@@ -180,10 +180,10 @@ fn main() {
 
 `Differ` 的工作是 **生成** `Patch` 对象（以及它的文本表示）。但反过来，如果我们手头有一个文本格式的补丁文件（比如从 Git 或其他人那里得到的 `.patch` 文件），我们也需要能把它 **解析** 回 Rust 中的 `Patch` 对象，这样才能用 [补丁应用器 (Patcher)](03_补丁应用器__patcher__.md) 来应用它。
 
-`diffpatch` 库提供了 `Patch::parse()` 方法来完成这个任务。它读取遵循统一差异格式的字符串，并尝试构建出一个 `Patch` 结构体实例。
+`patcher` 库提供了 `Patch::parse()` 方法来完成这个任务。它读取遵循统一差异格式的字符串，并尝试构建出一个 `Patch` 结构体实例。
 
 ```rust
-use diffpatch::Patch; // 引入 Patch
+use patcher::Patch; // 引入 Patch
 
 fn main() {
     // 假设这是我们从文件读取或网络接收到的补丁字符串
@@ -227,7 +227,7 @@ fn main() {
 
 **代码解释:**
 
-1.  **`use diffpatch::Patch;`**: 引入 `Patch` 类型。
+1.  **`use patcher::Patch;`**: 引入 `Patch` 类型。
 2.  **`patch_string`**: 包含标准统一差异格式的字符串。注意这里我们用了 `--- a/file.txt` 和 `+++ b/file.txt` 作为更真实的例子。
 3.  **`Patch::parse(&patch_string)`**: 调用静态方法 `parse`，传入补丁字符串的引用。
 4.  **`match`**: `parse` 返回一个 `Result<Patch, Error>`。我们用 `match` 来处理成功 (`Ok(parsed_patch)`) 和失败 (`Err(e)`) 的情况。
@@ -237,7 +237,7 @@ fn main() {
 
 ## 总结
 
-在这一章，我们深入了解了 `diffpatch` 世界的第二个核心概念：**补丁 (Patch)**。
+在这一章，我们深入了解了 `patcher` 世界的第二个核心概念：**补丁 (Patch)**。
 
 *   我们知道了 `Patch` 是 [差异生成器 (Differ)](01_差异生成器__differ__.md) 的输出，它像一份详细的“修改说明书”。
 *   我们学习了如何阅读和理解标准的 **统一差异格式 (Unified Diff Format)**，包括文件头 (`---`, `+++`)、变更块头 (`@@ ... @@`) 以及表示上下文 (` `)、删除 (`-`) 和添加 (`+`) 的行。

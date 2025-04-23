@@ -50,9 +50,9 @@ The part starting with `@@` and the lines following it form *one single chunk*.
 
 So, this single chunk bundles together one removal and two additions, along with the surrounding context lines, all occurring near the start of the file. If there were changes much later in the file, they would be grouped into a *separate* chunk with its own `@@ ... @@` header.
 
-## How `diffpatch` Represents a Chunk in Code
+## How `patcher` Represents a Chunk in Code
 
-In Rust code, `diffpatch` uses a `struct` to represent a chunk, holding all the information we just discussed.
+In Rust code, `patcher` uses a `struct` to represent a chunk, holding all the information we just discussed.
 
 *(From `src/patch.rs`)*
 ```rust
@@ -93,7 +93,7 @@ Remember the `Patch` struct from Chapter 2? It contains a field `chunks: Vec<Chu
 Let's see how you might inspect the chunks of the patch we generated earlier:
 
 ```rust
-use diffpatch::Differ;
+use patcher::Differ;
 
 fn main() {
     let original = "line1\nline2\nline3";

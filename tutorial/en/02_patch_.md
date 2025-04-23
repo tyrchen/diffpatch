@@ -64,9 +64,9 @@ new line4
 
 This text format is human-readable and commonly used by tools like `git diff`.
 
-## How `diffpatch` Represents a Patch in Code
+## How `patcher` Represents a Patch in Code
 
-While the text format is useful for display, `diffpatch` uses a Rust struct to work with patches programmatically. This structure holds all the information in an organized way.
+While the text format is useful for display, `patcher` uses a Rust struct to work with patches programmatically. This structure holds all the information in an organized way.
 
 *(From `src/patch.rs`)*
 ```rust
@@ -93,7 +93,7 @@ pub struct Patch {
 
 **Parsing and Displaying:**
 
-`diffpatch` provides handy methods to work with this structure:
+`patcher` provides handy methods to work with this structure:
 
 *   `Patch::parse(text_content)`: Reads a patch string (like the text example above) and turns it into a `Patch` struct.
 *   `patch.to_string()`: Takes a `Patch` struct and converts it back into the standard text format.
@@ -103,7 +103,7 @@ pub struct Patch {
 Let's revisit the code from Chapter 1 and see how we can interact with the `Patch` object after generating it:
 
 ```rust
-use diffpatch::Differ;
+use patcher::Differ;
 use std::fs; // For file operations
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -177,7 +177,7 @@ The core diffing logic happens in the `Diff Algorithm`. It produces a detailed l
 
 You now understand that a `Patch` is the structured result produced by a [Differ](01_differ_.md). It's like a detailed recipe, containing metadata and specific instructions ([Chunk](03_chunk_.md)s with [Operation](04_operation_.md)s) on how to transform one version of a text into another. It doesn't store the full text, just the differences, making it compact and shareable. You can represent it as text (unified diff format) or work with it as a `Patch` struct in Rust code.
 
-This `Patch` is central to `diffpatch`, acting as the bridge between finding differences ([Differ](01_differ_.md)) and applying them ([Patcher](05_patcher_.md)).
+This `Patch` is central to `patcher`, acting as the bridge between finding differences ([Differ](01_differ_.md)) and applying them ([Patcher](05_patcher_.md)).
 
 But what exactly are those `Chunk` things stored inside the `Patch`? In the next chapter, we'll zoom in on the `Chunk` structure and understand how it details the specific lines that were added, removed, or kept the same.
 

@@ -12,7 +12,7 @@ Think of these single instructions:
 *   `- Remove the salt`
 *   `  Keep 2 cups of flour (no change here)`
 
-This is exactly what an `Operation` represents in `diffpatch`:
+This is exactly what an `Operation` represents in `patcher`:
 
 1.  **`Add`**: Indicates that a specific line of text needs to be **added**. In patch text, these lines start with `+`.
 2.  **`Remove`**: Indicates that a specific line of text needs to be **removed**. In patch text, these lines start with `-`.
@@ -24,7 +24,7 @@ So, an `Operation` is the most granular level of detail within a [Chunk](03_chun
 
 ## Operations in Code: The `Operation` Enum
 
-`diffpatch` represents these three possibilities using a Rust `enum` (a type that can be one of several specific variants).
+`patcher` represents these three possibilities using a Rust `enum` (a type that can be one of several specific variants).
 
 *(From `src/patch.rs`)*
 ```rust
@@ -86,7 +86,7 @@ Let's revisit our example patch text and see how the lines map to `Operation`s w
 Now, let's expand the code example from Chapter 3 to actually look *inside* the `operations` vector of our chunk:
 
 ```rust
-use diffpatch::{Differ, Operation}; // Import Operation
+use patcher::{Differ, Operation}; // Import Operation
 
 fn main() {
     let original = "line1\nline2\nline3";

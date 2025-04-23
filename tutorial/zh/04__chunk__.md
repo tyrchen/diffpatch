@@ -73,7 +73,7 @@
 我们可以这样访问它们：
 
 ```rust
-use diffpatch::{Differ, Patch, Operation}; // 引入需要使用的类型
+use patcher::{Differ, Patch, Operation}; // 引入需要使用的类型
 
 fn main() {
     let original_text = "第一行\n第二行：旧内容\n第三行";
@@ -153,7 +153,7 @@ sequenceDiagram
 **流程解释:**
 
 1.  **获取原始变更**: [差异生成器 (Differ)](01_差异生成器__differ__.md) 首先调用其内部的差异算法（比如 XDiff）。该算法比较新旧文件的行，并生成一个非常基础的操作列表，这个列表只包含“相等”、“删除”和“插入”这三种基本信息，通常不包含上下文或块结构。
-2.  **处理变更列表**: `Differ` 接着将这个原始变更列表交给一个内部的“块构建”逻辑（在 `diffpatch` 中，这部分主要由 `src/differ/common.rs` 文件中的 `process_changes_to_chunks` 函数负责）。
+2.  **处理变更列表**: `Differ` 接着将这个原始变更列表交给一个内部的“块构建”逻辑（在 `patcher` 中，这部分主要由 `src/differ/common.rs` 文件中的 `process_changes_to_chunks` 函数负责）。
 3.  **识别和合并**: 这个构建逻辑会遍历原始变更列表。它会找到连续的修改（插入/删除），并将距离很近的修改区域合并成一个块。
 4.  **添加上下文**: 对于每个识别出的修改块，构建逻辑会向前和向后查找，添加指定数量（通常是 3 行，可配置）的“相等”行作为上下文。
 5.  **计算范围**: 根据块内的操作和上下文，构建逻辑计算出这个块在旧文件和新文件中的准确起始行号和总行数。
@@ -277,9 +277,9 @@ pub fn process_changes_to_chunks(
 *   我们知道了虽然通常不直接创建 `Chunk`，但可以通过访问 [补丁 (Patch)](02_补丁__patch__.md) 对象的 `chunks` 字段来检查其内容。
 *   我们还了解了 `Chunk` 的产生过程：[差异生成器 (Differ)](01_差异生成器__differ__.md) 调用差异算法获取原始变更，然后通过专门的逻辑（如 `process_changes_to_chunks`）将这些变更组合、添加上下文，最终形成结构化的 `Chunk` 对象。
 
-`Chunk` 是 `diffpatch` 库能够精确描述和应用文件差异的基础。到目前为止，我们讨论的所有内容——`Differ`, `Patch`, `Patcher`, `Chunk`——都集中在处理**单个文件**的差异上。然而，在实际的项目开发中，我们常常需要同时修改多个文件。
+`Chunk` 是 `patcher` 库能够精确描述和应用文件差异的基础。到目前为止，我们讨论的所有内容——`Differ`, `Patch`, `Patcher`, `Chunk`——都集中在处理**单个文件**的差异上。然而，在实际的项目开发中，我们常常需要同时修改多个文件。
 
-那么，`diffpatch` 库是如何处理涉及多个文件的差异和补丁呢？这就是我们下一章将要探索的内容：[多文件补丁 (MultifilePatch)](05__multifilepatch__.md)。
+那么，`patcher` 库是如何处理涉及多个文件的差异和补丁呢？这就是我们下一章将要探索的内容：[多文件补丁 (MultifilePatch)](05__multifilepatch__.md)。
 
 **下一章**: [第 5 章：多文件补丁 (MultifilePatch)](05__multifilepatch__.md)
 

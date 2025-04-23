@@ -1,6 +1,6 @@
-![](https://github.com/tyrchen/diffpatch/workflows/build/badge.svg)
+![](https://github.com/tyrchen/patcher/workflows/build/badge.svg)
 
-# Diffpatch
+# Patcher
 
 一个用于生成和应用Git风格统一差异补丁的Rust库。
 
@@ -24,13 +24,13 @@
 
 ```toml
 [dependencies]
-diffpatch = { version = "0.1.0", default-features = false }
+patcher = { version = "0.1.0", default-features = false }
 ```
 
 或安装CLI工具：
 
 ```bash
-cargo install diffpatch
+cargo install patcher
 ```
 
 ## 库使用
@@ -38,7 +38,7 @@ cargo install diffpatch
 ### 生成补丁
 
 ```rust
-use diffpatch::{DiffAlgorithm, Differ};
+use patcher::{DiffAlgorithm, Differ};
 
 fn main() {
     let old_content = "line1\nline2\nline3\nline4";
@@ -54,7 +54,7 @@ fn main() {
 ### 应用补丁
 
 ```rust
-use diffpatch::{DiffAlgorithm, Differ, PatchAlgorithm, Patcher};
+use patcher::{DiffAlgorithm, Differ, PatchAlgorithm, Patcher};
 
 fn main() {
     let old_content = "line1\nline2\nline3\nline4";
@@ -75,7 +75,7 @@ fn main() {
 ### 解析补丁
 
 ```rust
-use diffpatch::Patch;
+use patcher::Patch;
 
 fn main() {
     let patch_content = "\
@@ -100,7 +100,7 @@ fn main() {
 ### 处理多文件补丁
 
 ```rust
-use diffpatch::{MultifilePatch, MultifilePatcher};
+use patcher::{MultifilePatch, MultifilePatcher};
 use std::path::Path;
 
 fn main() {

@@ -11,7 +11,7 @@
 
 ## 什么是多文件补丁应用器 (MultifilePatcher)？
 
-**多文件补丁应用器 (MultifilePatcher)** 是 `diffpatch` 库中负责读取 [多文件补丁 (MultifilePatch)](05_多文件补丁__multifilepatch__.md) 并将其中的**每一个**单独文件 [补丁 (Patch)](02_补丁__patch__.md) 应用到文件系统上对应文件的组件。
+**多文件补丁应用器 (MultifilePatcher)** 是 `patcher` 库中负责读取 [多文件补丁 (MultifilePatch)](05_多文件补丁__multifilepatch__.md) 并将其中的**每一个**单独文件 [补丁 (Patch)](02_补丁__patch__.md) 应用到文件系统上对应文件的组件。
 
 你可以把它想象成一位“**项目经理**”或“**施工队长**”。这位队长拿着整套房子的改造计划书 (`MultifilePatch`)。他会仔细阅读计划书：
 
@@ -75,7 +75,7 @@ my_project/
 现在，我们想把 `project.patch` 应用到 `my_project` 目录：
 
 ```rust
-use diffpatch::{MultifilePatch, MultifilePatcher, ApplyResult}; // 引入所需类型
+use patcher::{MultifilePatch, MultifilePatcher, ApplyResult}; // 引入所需类型
 use std::path::Path;
 use std::fs; // 用于文件操作
 
@@ -378,7 +378,7 @@ fn delete_file(path: &Path) -> Result<(), Error> {
 
 ## 总结
 
-在本章，也是我们 `diffpatch` 入门教程的最后一章，我们认识了负责统筹全局的“项目经理”——**多文件补丁应用器 (MultifilePatcher)**。
+在本章，也是我们 `patcher` 入门教程的最后一章，我们认识了负责统筹全局的“项目经理”——**多文件补丁应用器 (MultifilePatcher)**。
 
 *   我们知道了 `MultifilePatcher` 的职责是读取包含多个文件修改的 [多文件补丁 (MultifilePatch)](05_多文件补丁__multifilepatch__.md)，并将其中的每一个单独 [补丁 (Patch)](02_补丁__patch__.md) 应用到文件系统上对应的文件中。
 *   我们学习了如何使用 `MultifilePatcher::with_root()` 来指定项目根目录，并调用 `apply_and_write()` 方法来执行补丁应用（包括正向和反向）。
@@ -387,7 +387,7 @@ fn delete_file(path: &Path) -> Result<(), Error> {
 
 ## 教程回顾与后续
 
-恭喜你完成了 `diffpatch` 库的入门教程！🎉
+恭喜你完成了 `patcher` 库的入门教程！🎉
 
 在这个系列中，我们一起探索了文本差异比较和应用的核心概念：
 
@@ -398,15 +398,15 @@ fn delete_file(path: &Path) -> Result<(), Error> {
 5.  [**多文件补丁 (MultifilePatch)**](05_多文件补丁__multifilepatch__.md)：组织多个 `Patch` 的“项目改造计划书”，用于表示跨文件的修改。
 6.  [**多文件补丁应用器 (MultifilePatcher)**](06_多文件补丁应用器__multifilepatcher__.md)：像项目经理一样，执行 `MultifilePatch` 计划书，协调应用所有文件的修改到文件系统。
 
-希望这个教程帮助你理解了 `diffpatch` 库的基本用法和工作原理。现在，你可以尝试在自己的项目中使用 `diffpatch` 来生成补丁、分享代码变更、或者将补丁应用到你的文件上。
+希望这个教程帮助你理解了 `patcher` 库的基本用法和工作原理。现在，你可以尝试在自己的项目中使用 `patcher` 来生成补丁、分享代码变更、或者将补丁应用到你的文件上。
 
 如果你想更深入地了解，可以查看：
 
-*   **`diffpatch` 的源代码**: 特别是 `src/` 目录下的各个模块。
+*   **`patcher` 的源代码**: 特别是 `src/` 目录下的各个模块。
 *   **API 文档**: 运行 `cargo doc --open` 可以生成并打开详细的 API 文档。
 *   **示例代码**: `examples/` 目录下有更完整的用法示例。
 
-感谢你的学习！祝你在使用 `diffpatch` 的过程中一切顺利！
+感谢你的学习！祝你在使用 `patcher` 的过程中一切顺利！
 
 ---
 

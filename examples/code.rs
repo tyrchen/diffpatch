@@ -1,4 +1,4 @@
-use diffpatch::{DiffAlgorithm, Differ, PatchAlgorithm, Patcher};
+use patcher::{DiffAlgorithm, Differ, PatchAlgorithm, Patcher};
 
 fn main() {
     let old = include_str!("../fixtures/code/old.py");

@@ -5,7 +5,7 @@
 
 但是，在现实世界的项目开发中，我们很少只修改一个文件。比如，修复一个 Bug 可能需要同时修改源代码文件、配置文件和测试文件。像 Git 这样的版本控制系统，一次提交（commit）也常常包含对多个文件的改动。
 
-那么，当我们面对涉及**多个文件**的修改时，该如何表示和管理这些分散在不同文件中的差异呢？`diffpatch` 库为我们提供了解决方案：**多文件补丁 (MultifilePatch)**。
+那么，当我们面对涉及**多个文件**的修改时，该如何表示和管理这些分散在不同文件中的差异呢？`patcher` 库为我们提供了解决方案：**多文件补丁 (MultifilePatch)**。
 
 ## 什么是多文件补丁 (MultifilePatch)？
 
@@ -17,7 +17,7 @@
 *   对于厨房橱柜的改造，你有另一份说明书（一个针对厨房文件的 [补丁 (Patch)](02_补丁__patch__.md)）。
 *   对于卧室地板的更换，你还有第三份说明书（一个针对卧室文件的 [补丁 (Patch)](02_补丁__patch__.md)）。
 
-现在，你需要一个文件夹或者一个大信封，把这三份独立的说明书（`Patch`）**收集并组织**在一起，形成一个完整的“房屋翻新计划”。这个“计划”就相当于 `diffpatch` 中的 **`MultifilePatch`**。
+现在，你需要一个文件夹或者一个大信封，把这三份独立的说明书（`Patch`）**收集并组织**在一起，形成一个完整的“房屋翻新计划”。这个“计划”就相当于 `patcher` 中的 **`MultifilePatch`**。
 
 所以，`MultifilePatch` 本身并不直接包含具体的修改指令（`+` 或 `-` 行），它更像是一个**容器**，里面装着一系列针对不同文件的 [补丁 (Patch)](02_补丁__patch__.md) 对象。每一个 [补丁 (Patch)](02_补丁__patch__.md) 对象都负责描述它自己对应那个文件的修改细节。
 
@@ -32,7 +32,7 @@
 **关键点**: 在为每个文件生成 `Patch` 时，**必须**设置该 `Patch` 对象的 `old_file` 和 `new_file` 字段，以指明这个补丁是针对哪个文件的。这通常使用文件的相对路径。
 
 ```rust
-use diffpatch::{Differ, Patch, MultifilePatch}; // 引入所需类型
+use patcher::{Differ, Patch, MultifilePatch}; // 引入所需类型
 
 fn main() {
     // === 准备多个文件的修改 ===
@@ -76,7 +76,7 @@ fn main() {
 
 1.  **准备内容**: 我们定义了两组原始文本和修改后文本，模拟 `config.json` 和 `src/main.rs` 两个文件的变更。
 2.  **生成单个 `Patch`**: 我们分别为 `config.json` 和 `main.rs` 创建了 [差异生成器 (Differ)](01_差异生成器__differ__.md) 实例，并调用 `generate()` 生成了各自的 `Patch` 对象 (`config_patch`, `main_patch`)。
-3.  **设置文件名**: **这是关键步骤！** 对于每个生成的 `patch` 对象，我们手动设置了 `old_file` 和 `new_file` 字段，通常使用文件的相对路径。这告诉 `diffpatch` 这个补丁具体属于哪个文件。
+3.  **设置文件名**: **这是关键步骤！** 对于每个生成的 `patch` 对象，我们手动设置了 `old_file` 和 `new_file` 字段，通常使用文件的相对路径。这告诉 `patcher` 这个补丁具体属于哪个文件。
 4.  **收集 `Patch`**: 我们创建了一个 `Vec<Patch>` 类型的向量 `all_patches`，并将前面生成的两个 `Patch` 对象放入其中。
 5.  **创建 `MultifilePatch`**: 最后，我们调用 `MultifilePatch::new()`，将包含所有 `Patch` 的 `all_patches` 列表传递给它，从而创建了一个 `MultifilePatch` 实例 `multi_patch`。
 
@@ -120,10 +120,10 @@ diff --git a/src/main.rs b/src/main.rs
 
 反过来，如果你有一个包含多个文件差异的补丁文件（比如从 `git diff` 命令或者代码审查工具中获取的 `.patch` 文件），你需要能把它解析回 Rust 代码中的 `MultifilePatch` 对象。
 
-`diffpatch` 提供了 `MultifilePatch::parse()` 方法来完成这个任务。它接收一个包含上述格式的字符串，然后尝试将其解析成一个 `MultifilePatch` 实例，这个实例内部会包含解析出的所有单个 `Patch` 对象。
+`patcher` 提供了 `MultifilePatch::parse()` 方法来完成这个任务。它接收一个包含上述格式的字符串，然后尝试将其解析成一个 `MultifilePatch` 实例，这个实例内部会包含解析出的所有单个 `Patch` 对象。
 
 ```rust
-use diffpatch::MultifilePatch; // 引入 MultifilePatch
+use patcher::MultifilePatch; // 引入 MultifilePatch
 
 fn main() {
     // 假设这是从文件读取或网络接收到的多文件补丁字符串
@@ -175,7 +175,7 @@ diff --git a/src/main.rs b/src/main.rs
 
 **代码解释:**
 
-1.  **`use diffpatch::MultifilePatch;`**: 引入 `MultifilePatch` 类型。
+1.  **`use patcher::MultifilePatch;`**: 引入 `MultifilePatch` 类型。
 2.  **`multi_patch_string`**: 包含拼接好的多个文件差异的字符串。
 3.  **`MultifilePatch::parse(&multi_patch_string)`**: 调用静态方法 `parse`，传入补丁字符串的引用。
 4.  **`match`**: `parse` 返回一个 `Result<MultifilePatch, Error>`。我们用 `match` 处理成功 (`Ok`) 和失败 (`Err`) 的情况。
@@ -292,7 +292,7 @@ sequenceDiagram
 
 现在我们有了一个代表整个项目（跨多个文件）修改的“大计划书” (`MultifilePatch`)，无论是我们自己生成的，还是从别处解析来的。下一步自然就是：**如何执行这份包含多个文件修改指令的大计划书呢？**
 
-这就需要我们认识 `diffpatch` 世界的另一个“工匠”了，一个专门处理多文件补丁的工匠。
+这就需要我们认识 `patcher` 世界的另一个“工匠”了，一个专门处理多文件补丁的工匠。
 
 **下一章**: [第 6 章：多文件补丁应用器 (MultifilePatcher)](06__multifilepatcher__.md)
 
