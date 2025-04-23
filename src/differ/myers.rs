@@ -1,5 +1,5 @@
-use crate::differ::{Change, DiffAlgorithm};
 use crate::Differ;
+use crate::differ::{Change, DiffAlgorithm};
 
 use super::{create_patch, handle_empty_files, process_changes_to_chunks};
 
@@ -113,7 +113,7 @@ impl DiffAlgorithm for MyersDiffer<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{test_utils::load_fixture, PatchAlgorithm, Patcher};
+    use crate::{PatchAlgorithm, Patcher, test_utils::load_fixture};
 
     #[test]
     fn test_simple_myers_diff() {

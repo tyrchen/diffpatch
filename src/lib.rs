@@ -53,7 +53,7 @@ mod tests {
     use crate::{DiffAlgorithm, PatchAlgorithm};
 
     // Bring necessary items into scope for the test
-    use super::{patcher::Patcher, Differ, Error};
+    use super::{Differ, Error, patcher::Patcher};
 
     #[test]
     fn test_integration_diff_and_patch() -> Result<(), Error> {

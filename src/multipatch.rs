@@ -83,7 +83,10 @@ impl MultifilePatch {
                                 // Provide more context in the warning
                                 warn!(
                                     "Warning: Skipping malformed patch section (lines {}-{}): {}\n--- Patch Content Start ---\n{}\n--- Patch Content End ---",
-                                    start + 1, i, e, patch_content
+                                    start + 1,
+                                    i,
+                                    e,
+                                    patch_content
                                 );
                             }
                         }
@@ -104,7 +107,10 @@ impl MultifilePatch {
                     Err(e) => {
                         warn!(
                             "Warning: Skipping malformed patch section at end of file (lines {}-{}): {}\n--- Patch Content Start ---\n{}\n--- Patch Content End ---",
-                            start + 1, lines.len(), e, patch_content
+                            start + 1,
+                            lines.len(),
+                            e,
+                            patch_content
                         );
                     }
                 }

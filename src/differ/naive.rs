@@ -110,7 +110,7 @@ impl DiffAlgorithm for NaiveDiffer<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{differ::DiffAlgorithmType, test_utils::load_fixture, PatchAlgorithm, Patcher};
+    use crate::{PatchAlgorithm, Patcher, differ::DiffAlgorithmType, test_utils::load_fixture};
 
     #[test]
     fn test_simple_diff() {

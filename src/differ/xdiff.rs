@@ -63,7 +63,7 @@ impl<'a> XDiffDiffer<'a> {
         // Allocate K vectors (forward and backward paths)
         let ndiags = old_len + new_len + 3;
         let k_vec_size = 2 * ndiags + 2; // Total size needed
-                                         // kvd: K-Vector for Diagonals (stores furthest point reached on each diagonal)
+        // kvd: K-Vector for Diagonals (stores furthest point reached on each diagonal)
         let mut kvd = vec![0isize; k_vec_size]; // Store as isize to handle potential large coords
 
         // Calculate the offset for indexing K-vectors (diagonals can be negative)
@@ -675,7 +675,7 @@ impl DiffAlgorithm for XDiffDiffer<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{differ::DiffAlgorithmType, test_utils::load_fixture, PatchAlgorithm, Patcher};
+    use crate::{PatchAlgorithm, Patcher, differ::DiffAlgorithmType, test_utils::load_fixture};
 
     // Keeping existing tests - they should still pass if the algorithm is correct,
     // though the exact chunking might differ slightly from the previous LCS impl.

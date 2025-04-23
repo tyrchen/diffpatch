@@ -33,9 +33,18 @@ fn create_test_files(dir: &Path) -> Result<()> {
 
     // Define some test files
     let files = [
-        ("config.json", "{\n  \"name\": \"diffpatch\",\n  \"version\": \"0.1.0\",\n  \"debug\": false\n}"),
-        ("README.txt", "# Test Project\n\nThis is a test project for diffpatch.\n\nMore information will be added later."),
-        ("src/main.rs", "fn main() {\n    println!(\"Hello, world!\");\n}"),
+        (
+            "config.json",
+            "{\n  \"name\": \"diffpatch\",\n  \"version\": \"0.1.0\",\n  \"debug\": false\n}",
+        ),
+        (
+            "README.txt",
+            "# Test Project\n\nThis is a test project for diffpatch.\n\nMore information will be added later.",
+        ),
+        (
+            "src/main.rs",
+            "fn main() {\n    println!(\"Hello, world!\");\n}",
+        ),
     ];
 
     // Create each file
@@ -65,17 +74,17 @@ fn create_multi_file_patch(dir: &Path) -> Result<std::path::PathBuf> {
         (
             "config.json",
             "{\n  \"name\": \"diffpatch\",\n  \"version\": \"0.1.0\",\n  \"debug\": false\n}",
-            "{\n  \"name\": \"diffpatch\",\n  \"version\": \"0.2.0\",\n  \"debug\": true,\n  \"logLevel\": \"info\"\n}"
+            "{\n  \"name\": \"diffpatch\",\n  \"version\": \"0.2.0\",\n  \"debug\": true,\n  \"logLevel\": \"info\"\n}",
         ),
         (
             "README.txt",
             "# Test Project\n\nThis is a test project for diffpatch.\n\nMore information will be added later.",
-            "# Diffpatch Test\n\nThis is a test project showcasing the diffpatch library.\n\nSee examples for more details."
+            "# Diffpatch Test\n\nThis is a test project showcasing the diffpatch library.\n\nSee examples for more details.",
         ),
         (
             "src/main.rs",
             "fn main() {\n    println!(\"Hello, world!\");\n}",
-            "fn main() {\n    println!(\"Hello, diffpatch!\");\n    println!(\"Version 0.2.0\");\n}"
+            "fn main() {\n    println!(\"Hello, diffpatch!\");\n    println!(\"Version 0.2.0\");\n}",
         ),
     ];
 

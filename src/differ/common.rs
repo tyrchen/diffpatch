@@ -118,8 +118,7 @@ fn find_next_block(
     if block_end_idx < block_start_idx {
         warn!(
             "Warning: find_next_block calculated block_end ({}) < block_start ({}). Returning None.",
-            block_end_idx,
-            block_start_idx
+            block_end_idx, block_start_idx
         );
         return None;
     }
@@ -238,8 +237,7 @@ pub fn process_changes_to_chunks(
             // This should ideally not happen if find_next_block is correct, but as a safety measure.
             warn!(
                 "Warning: find_next_block did not advance index. current={}, block_end={}. Forcing advance.",
-                current_change_idx,
-                block_end_idx
+                current_change_idx, block_end_idx
             );
             current_change_idx += 1;
             continue;
@@ -286,8 +284,7 @@ pub fn process_changes_to_chunks(
         if next_change_idx <= current_change_idx {
             warn!(
                 "Warning: next_change_idx did not advance index after building chunk. current={}, next={}. Forcing advance.",
-                current_change_idx,
-                next_change_idx
+                current_change_idx, next_change_idx
             );
             current_change_idx += 1; // Force advancement if we're stuck
         } else {

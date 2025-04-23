@@ -96,10 +96,10 @@ impl DiffAlgorithm for SimilarDiffer<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::PatchAlgorithm;
     use crate::differ::{DiffAlgorithmType, Differ};
     use crate::patcher::Patcher;
     use crate::test_utils::load_fixture;
-    use crate::PatchAlgorithm;
 
     fn run_diff_and_apply(old: &str, new: &str, context: usize) -> String {
         let base_differ =

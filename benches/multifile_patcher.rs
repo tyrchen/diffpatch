@@ -1,5 +1,5 @@
-use diffpatch::{differ::Differ, DiffAlgorithm, MultifilePatch, PatchAlgorithm, Patcher};
-use divan::{black_box, Bencher};
+use diffpatch::{DiffAlgorithm, MultifilePatch, PatchAlgorithm, Patcher, differ::Differ};
+use divan::{Bencher, black_box};
 use std::collections::HashMap;
 
 #[global_allocator]
